@@ -4,7 +4,8 @@ Semester Project in Trustworthy Systems
 
 Navigate to /NodeJS
 
-then, 
+then,
+
 npm install
 
 npm start
