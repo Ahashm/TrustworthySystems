@@ -1,1 +1,16 @@
-<p>home works!</p>
+<div class="container">
+  <h1 class="title">Smart Lock System</h1>
+  <div class="notification">
+    <i class="fa fa-bell-o"></i>
+  </div>
+  <div class="lock">
+    <div
+      class="lock-circle"
+      [ngClass]="{ on: alarmOn, off: !alarmOn }"
+      (click)="toggleAlarm()"
+    >
+      <i class="fa fa-lock" [ngClass]="{ open: !alarmOn, locked: alarmOn }"></i>
+    </div>
+    <p class="status">{{ alarmOn ? "Alarm On" : "Alarm Off" }}</p>
+  </div>
+</div>
