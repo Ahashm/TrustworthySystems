@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { ConnectionService } from '../connection.service';
 
 @Component({
   selector: 'app-home',
@@ -9,6 +10,14 @@ export class HomeComponent {
   alarmOn: boolean = false;
   lockOn: boolean = false;
   alarmName: string = 'Smart Lock System';
+
+  constructor(private connection: ConnectionService) {}
+
+  ngOnInit() {
+    this.connection.getData().subscribe((data) => {
+      console.log(data);
+    });
+  }
 
   toggleAlarm() {
     this.alarmOn = !this.alarmOn;
