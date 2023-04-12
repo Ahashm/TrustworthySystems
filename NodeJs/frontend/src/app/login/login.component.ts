@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 @Component({
@@ -9,19 +10,30 @@ import { Router } from '@angular/router';
 export class LoginComponent {
   username: string = '';
   password: string = '';
-  errorMessage: string | null | undefined;
+  errorMessage: string = '';
 
-  constructor(private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {}
 
   onSubmit() {
-    // Check if the username and password are correct
-    if (this.username === 'myusername' && this.password === 'mypassword') {
-      this.errorMessage = null;
-      // Navigate to the home page component
-      this.router.navigate(['/home']);
-    } else {
-      // Display an error message to the user
-      this.errorMessage = 'Invalid username or password';
-    }
+    const loginData = {
+      username: this.username,
+      password: this.password,
+    };
+    this.http.post('http://localhost:3002/api/login', loginData).subscribe(
+      (response: any) => {
+        if (response.success) {
+          // Redirect to the home page or protected page
+          this.router.navigate(['/home']);
+        } else {
+          // Show an error message
+          this.errorMessage = response.message;
+        }
+      },
+      (error) => {
+        console.error('Error:', error);
+        this.errorMessage =
+          'An unexpected error occurred. Please try again later.';
+      }
+    );
   }
 }

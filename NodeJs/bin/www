@@ -8,6 +8,48 @@ var app = require("../app");
 var debug = require("debug")("semester-project-in-trustworthy-systems:server");
 var http = require("http");
 const cors = require("cors");
+const User = require("../models/user");
+const express = require("express");
+const bodyParser = require("body-parser");
+const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
+const apptwo = express();
+apptwo.use(bodyParser.json());
+apptwo.use(cors());
+
+apptwo.post("/api/login", async (req, res) => {
+  console.log("hej");
+  const { username, password } = req.body;
+  const user = await User.findOne({ username: username });
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid username or password" });
+  }
+
+  const isPasswordValid = await user.comparePassword(password);
+
+  if (!isPasswordValid) {
+    return res.status(401).json({ message: "Invalid username or password" });
+  }
+
+  const token = jwt.sign({ userId: user._id }, "secret_key");
+  res.json({ token });
+});
+
+apptwo.listen(3002, () => {
+  console.log("Server started on port 3002");
+});
+
+// Connect to MongoDB database
+mongoose.connect("mongodb+srv://admin:admin@ahashdb.xeueffq.mongodb.net/test", {
+  useNewUrlParser: true,
+});
+const db = mongoose.connection;
+db.on("error", console.error.bind(console, "connection error:"));
+db.once("open", function () {
+  console.log("Connected to MongoDB database");
+});
 
 app.use(cors());
 
