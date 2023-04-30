@@ -26,15 +26,15 @@ MFRC522::MIFARE_Key key;
 MFRC522 rfid = MFRC522(SS_PIN, RST_PIN);
 
 // Network
-const char *ssid = "Daniston";
-const char *password = "31268691";
+const char *ssid = "T14One";
+const char *password = "12349876";
 
 // NTP client settings
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 // JSON buffer size
-const size_t bufferSize = JSON_OBJECT_SIZE(11);
+const size_t bufferSize = JSON_OBJECT_SIZE(12);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
@@ -277,6 +277,7 @@ void heartbeat()
   JsonObject json = jsonDoc.to<JsonObject>();
 
   // Get system information
+  json["Id"] = ESP.getEfuseMac();
   json["cpuFreq"] = ESP.getCpuFreqMHz();
   json["freeMem"] = ESP.getFreeHeap();
   json["heapSize"] = ESP.getHeapSize();
@@ -323,6 +324,9 @@ void publishMessageMQTT(char topicToSentTo, String message)
 void tempPrint()
 {
   // Get system information
+  Serial.print("ESP32 ID: ");
+  uint64_t chipId = ESP.getEfuseMac();
+  Serial.printf("%04X%08X\n", (uint16_t)(chipId >> 32), (uint32_t)chipId);
   Serial.print("CPU frequency: ");
   Serial.println(ESP.getCpuFreqMHz());
   Serial.print("Free memory: ");
@@ -342,9 +346,6 @@ void tempPrint()
   Serial.println(WiFi.RSSI());
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-
-  // Send heartbeat message to server
-  sendMessageToServer("heartbeat");
 }
 
 void loop()
