@@ -117,7 +117,7 @@ void setup()
     Serial.println("Connecting to WiFi..");
   }
   Serial.println("Connected to the WiFi network");
-  
+  /*
   // connecting to a mqtt broker
   client.setServer(mqtt_broker, mqtt_port);
   client.setCallback(callback);
@@ -140,7 +140,7 @@ void setup()
   // publish and subscribe
   client.publish(topic, "VirkPlz");
   client.subscribe(topic);
-  
+  */
   Serial.println(F("Initialize System"));
   // init rfid D8,D5,D6,D7
   SPI.begin();
@@ -292,33 +292,34 @@ void heartbeat()
   json["ipAddress"] = WiFi.localIP().toString();
 
   // States
-  jsonObject["red_led_state"] = redLED_State;
-  jsonObject["blue_led_state"] = blueLED_State;
-  jsonObject["white_led_state"] = whiteLED_State;
-  jsonObject["green_led_state"] = greenLED_State;
+  json["red_led_state"] = redLED_State;
+  json["blue_led_state"] = blueLED_State;
+  json["white_led_state"] = whiteLED_State;
+  json["green_led_state"] = greenLED_State;
 
   // Serialize JSON document to string
   String jsonString;
   serializeJson(jsonDoc, jsonString);
+  const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
-  publishMessageMQTT("/ESP32/Heartbeat", jsonString);
+  publishMessageMQTT("/ESP32/Heartbeat", message);
 }
 
-void publishMessageMQTT(char topicToSentTo, String message)
+void publishMessageMQTT(const char* topic, const char* message)
 {
-  String str = message;
+  //String str = message;
 
   // Length (with one extra character for the null terminator)
-  int str_len = str.length() + 1;
+  //int str_len = str.length() + 1;
 
   // Prepare the character array (the buffer)
-  char char_array[str_len];
+  //char char_array[str_len];
 
   // Copy it over
-  str.toCharArray(char_array, str_len);
+  //str.toCharArray(char_array, str_len);
 
-  client.publish(topicToSentTo, char_array);
+  client.publish(topic, message);
 }
 
 void tempPrint()
@@ -354,7 +355,7 @@ void loop()
   if (millis() - lastHeartbeatTime >= 60000)
   {
     lastHeartbeatTime = millis();
-    heartbeat();
+    //heartbeat();
     tempPrint();
   }
 
