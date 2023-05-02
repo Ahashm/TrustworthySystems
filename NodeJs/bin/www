@@ -1,25 +1,125 @@
-#!/usr/bin/env node
-
-/**
- * Module dependencies.
- */
-
 var app = require("../app");
 var debug = require("debug")("semester-project-in-trustworthy-systems:server");
 var http = require("http");
 const cors = require("cors");
+const User = require("../models/user");
+const express = require("express");
+const bodyParser = require("body-parser");
+const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 
+app.use(bodyParser.json());
 app.use(cors());
 
-app.get("/data", (req, res) => {
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+  try {
+    const decoded = jwt.verify(token, "secret_key");
+    req.userId = decoded.userId;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+app.post("/api/login", async (req, res) => {
+  console.log("hej");
+  let users = await User.find({});
+  console.log(users);
+  const { username, password } = req.body;
+  console.log(username);
+
+  const user = await User.findOne({ username: username }).exec();
+
+  console.log("test" + user);
+
+  if (!user) {
+    return res.status(401).json({ message: "Invalid username" });
+  }
+
+  const isPasswordValid = await user.comparePassword(password);
+
+  if (!isPasswordValid) {
+    return res.status(401).json({ message: "Invalid password" });
+  }
+
+  const token = jwt.sign({ userId: user._id }, "secret_key");
+  res.json({ success: true, token });
+});
+
+// app.post("/api/createuser", async (req, res) => {
+//   console.log("hej");
+//   let users = await User.find({});
+//   console.log(users);
+//   const { username, password } = req.body;
+//   console.log(username);
+
+//   const user = await User.findOne({ username: username }).exec();
+
+//   console.log("test" + user);
+
+//   if (!user) {
+//     return res.status(401).json({ message: "Invalid username or password" });
+//   }
+
+//   const isPasswordValid = await user.createuser(password);
+
+//   if (!isPasswordValid) {
+//     return res.status(401).json({ message: "Invalid username or password" });
+//   }
+
+//   const token = jwt.sign({ userId: user._id }, "secret_key");
+//   res.json({ success: true, token });
+// });
+
+app.get("/users", async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  if (req.method === "OPTIONS") {
+    res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
+    return res.status(200).json({});
+  }
+  next();
+});
+
+// Protected route
+app.get("/data", verifyToken, (req, res) => {
   res.send({ message: "hello world" });
+});
+
+// Connect to MongoDB database
+mongoose.connect("mongodb://localhost:27017/users", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true, // added this line
+});
+const db = mongoose.connection;
+db.on("error", console.error.bind(console, "connection error:"));
+db.once("open", function () {
+  console.log("Connected to MongoDB database");
 });
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || "3000");
+var port = normalizePort(process.env.PORT || "3002");
 app.set("port", port);
 
 /**
@@ -32,9 +132,13 @@ var server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
-server.on("error", onError);
-server.on("listening", onListening);
+server.listen(port, (error) => {
+  if (error) {
+    console.error("Error starting server:", error);
+    return;
+  }
+  console.log(`Server started on port ${port}`);
+});
 
 /**
  * Normalize a port into a number, string, or false.
