@@ -1,14 +1,15 @@
 var express = require('express');
 var router = express.Router();
-let mqtt = require("../service/mqtt_client");
+const mqtt = require("../service/mqtt_client");
+const verifyToken = require("../verification/jwt_verification").verifyToken;
 
 //mangler at sende timestamp med, hvordan skal dette klares?
 
-router.post('/unlock', function (req, res, next) {
+router.post('/unlock', verifyToken, function (req, res) {
     interactWithLock(req, "unlock");
 });
 
-router.post('/lock', function (req, res, next) {
+router.post('/lock', verifyToken, function (req, res) {
     interactWithLock(req, "lock");
 });
 

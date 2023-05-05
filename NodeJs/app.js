@@ -9,6 +9,7 @@ var usersRouter = require("./routes/users");
 let heartbeatRouter = require("./routes/heartbeat");
 let loginRouter = require("./routes/login");
 let mqtt = require("./service/mqtt_client");
+const mongoose = require("mongoose");
 
 mqtt.connect("server");
 
