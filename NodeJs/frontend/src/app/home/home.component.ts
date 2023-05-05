@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { ConnectionService } from '../connection.service';
 
 @Component({
   selector: 'app-home',
@@ -7,28 +6,37 @@ import { ConnectionService } from '../connection.service';
   styleUrls: ['./home.component.css'],
 })
 export class HomeComponent {
-  alarmOn: boolean = false;
-  lockOn: boolean = false;
-  alarmName: string = 'Smart Lock System';
-
-  constructor(private connection: ConnectionService) {}
-
-  ngOnInit() {
-    this.connection.getData().subscribe((data) => {
-      console.log(data);
-    });
-  }
+  alarmOn = false;
+  notificationCount = 3;
+  notifications = ['Notification 1', 'Notification 2', 'Notification 3'];
+  showNotification = false;
+  historyLog: { date: Date; event: string }[] = [];
 
   toggleAlarm() {
     this.alarmOn = !this.alarmOn;
-    this.lockOn = this.alarmOn;
+    const event = this.alarmOn ? 'Alarm turned on' : 'Alarm turned off';
+    this.addLogEntry(event);
   }
 
   getAlarmText() {
-    return this.alarmOn ? 'Locked' : 'Unlocked';
+    return this.alarmOn ? 'The alarm is on' : 'The alarm is off';
   }
 
-  getAlarmColor() {
-    return this.alarmOn ? 'red' : 'green';
+  addNotification() {
+    this.notificationCount++;
+    this.notifications.push('Notification ' + this.notificationCount);
+    const event = `New notification added: Notification ${this.notificationCount}`;
+    this.addLogEntry(event);
+  }
+
+  toggleNotificationList() {
+    this.showNotification = !this.showNotification;
+  }
+
+  addLogEntry(event: string) {
+    this.historyLog.push({
+      date: new Date(),
+      event: event,
+    });
   }
 }

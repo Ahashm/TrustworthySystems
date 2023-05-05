@@ -1,8 +1,5 @@
 <div class="container">
   <h1 class="title">Smart Lock System</h1>
-  <div class="notification">
-    <i class="fa fa-bell-o"></i>
-  </div>
   <div class="lock">
     <div
       class="lock-circle"
@@ -11,6 +8,27 @@
     >
       <i class="fa fa-lock" [ngClass]="{ open: !alarmOn, locked: alarmOn }"></i>
     </div>
-    <p class="status">{{ alarmOn ? "Alarm On" : "Alarm Off" }}</p>
+    <p class="status">{{ getAlarmText() }}</p>
+  </div>
+  <div
+    class="notification-button"
+    (click)="showNotification = !showNotification"
+  >
+    <i class="fa fa-bell"></i>
+    <span class="badge">{{ notificationCount }}</span>
+  </div>
+  <div class="notification-list" [ngClass]="{ show: showNotification }">
+    <ul>
+      <li *ngFor="let notification of notifications">{{ notification }}</li>
+    </ul>
+  </div>
+  <div class="history-log">
+    <h2 class="subtitle">History Log</h2>
+    <ul>
+      <li *ngFor="let entry of historyLog">
+        <p>{{ entry.date | date : "medium" }}</p>
+        <p>{{ entry.event }}</p>
+      </li>
+    </ul>
   </div>
 </div>
