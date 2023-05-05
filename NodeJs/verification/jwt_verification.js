@@ -16,6 +16,6 @@ exports.verifyToken = (req, res, next) => {
 };
 
 exports.sign = (userId) => {
-    const token = jwt.sign({ userId: user._id }, "secret_key");
+    const token = jwt.sign({ userId: userId }, "secret_key");
     return token;
 }
