@@ -7,13 +7,15 @@ const verifyToken = require("../verification/jwt_verification").verifyToken;
 
 router.post('/unlock', verifyToken, function (req, res) {
     interactWithLock(req, "unlock");
+    res.json({ success: true });
 });
 
 router.post('/lock', verifyToken, function (req, res) {
     interactWithLock(req, "lock");
+    res.json({ success: true });
 });
 
-function interactWithLock(req, message){
+function interactWithLock(req, message) {
     let userId = req.body.userId;
     let lockId = req.body.lockId;
     mqtt.publish(userId, lockId, message);
