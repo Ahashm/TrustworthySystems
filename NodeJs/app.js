@@ -8,6 +8,7 @@ var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
 let heartbeatRouter = require("./routes/heartbeat");
 let loginRouter = require("./routes/login");
+let lockRouter = require("./routes/lock");
 let mqtt = require("./service/mqtt_client");
 const mongoose = require("mongoose");
 
@@ -30,6 +31,7 @@ app.use((req, res, next) => {
   next();
 });
 
+/*
 // Connect to MongoDB database
 mongoose.connect("mongodb://localhost:27017/users", {
   useNewUrlParser: true,
@@ -39,7 +41,7 @@ const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", function () {
   console.log("Connected to MongoDB database");
-});
+});*/
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
@@ -55,6 +57,7 @@ app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/heartbeat", heartbeatRouter);
 app.use("/login", loginRouter);
+app.use("/lock", lockRouter);
 
 module.exports = app;
 
