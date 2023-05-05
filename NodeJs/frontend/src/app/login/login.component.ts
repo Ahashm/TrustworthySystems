@@ -26,7 +26,7 @@ export class LoginComponent {
     });
 
     this.http
-      .post('http://localhost:3002/api/login', loginData, { headers })
+      .post('http://localhost:3002/login', loginData, { headers })
       .subscribe(
         (response: any) => {
           if (response.success) {
