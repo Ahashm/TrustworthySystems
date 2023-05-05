@@ -6,22 +6,30 @@ const verifyToken = require("../verification/jwt_verification").verifyToken;
 //missing timestamp in these two endponts, as well as the validation of said timestamp. Also needs to send timestamp to mqtt
 
 router.post('/unlock', verifyToken, function (req, res) {
-    interactWithLock(req, "unlock");
-    res.json({ success: true });
+    let success = interactWithLock(req, "unlock");
+    res.json({ success: success });
 });
 
 router.post('/lock', verifyToken, function (req, res) {
-    interactWithLock(req, "lock");
-    res.json({ success: true });
+    let success = interactWithLock(req, "lock");
+    res.json({ success: success });
 });
 
 function interactWithLock(req, message) {
-    let userId = req.body.userId;
-    let lockId = req.body.lockId;
-    mqtt.publish(userId, lockId, message);
+    console.log(req);
+    console.log(message);
+    let userId = req.userId;
+    let lockId = req.lockId;
+    let isAcceptable = isAcceptableTime(req.time);
+    if (isAcceptable) {
+        mqtt.publish(userId, lockId, message);
+        sucess = true;
+    }
+
+    return isAcceptable;
 }
 
-function isAcceptableTime(time){
+function isAcceptableTime(time) {
     let receivedDate = new Date(time);
     let now = Date.now();
     return receivedDate < now;

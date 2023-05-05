@@ -26,6 +26,7 @@ router.post("/", async (req, res) => {
     }
 
     const token = verification.sign(user._id);
+    console.log(token);
     res.json({ success: true, token });
 });
 
