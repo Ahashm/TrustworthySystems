@@ -11,7 +11,7 @@ export class LoginComponent {
   username: string = '';
   password: string = '';
   errorMessage: string | null | undefined;
-
+  myToken: string = '';
   constructor(private router: Router, private http: HttpClient) {}
 
   onSubmit() {
@@ -31,7 +31,9 @@ export class LoginComponent {
         (response: any) => {
           if (response.success) {
             // Redirect to the home page or protected page
-            this.router.navigate(['/home']);
+            console.log(response.token);
+            this.myToken = response.token;
+            this.router.navigate(['/home', { token: this.myToken }]);
           } else {
             // Show an error message
             this.errorMessage = response.message;

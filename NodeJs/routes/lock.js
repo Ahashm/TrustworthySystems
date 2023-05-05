@@ -1,4 +1,4 @@
-var express = require('express');
+var express = require("express");
 var router = express.Router();
 const moment = require('moment-timezone');
 const test = require("../service/mqtt_client");
@@ -6,14 +6,15 @@ const verifyToken = require("../verification/jwt_verification").verifyToken;
 
 //missing timestamp in these two endponts, as well as the validation of said timestamp. Also needs to send timestamp to mqtt
 
-router.post('/open', function (req, res) {
-    let success = interactWithLock(req, "unlock");
-    res.json({ success: success });
+router.post("/open", verifyToken, function (req, res) {
+  console.log("hi");
+  let success = interactWithLock(req, "unlock");
+  res.json({ success: success });
 });
 
-router.post('/close', function (req, res) {
-    let success = interactWithLock(req, "lock");
-    res.json({ success: success });
+router.post("/close", verifyToken, function (req, res) {
+  let success = interactWithLock(req, "lock");
+  res.json({ success: success });
 });
 
 function interactWithLock(req, message) {
@@ -27,7 +28,7 @@ function interactWithLock(req, message) {
         sucess = true;
     }
 
-    return isAcceptable;
+  return isAcceptable;
 }
 
 function isAcceptableTime(receivedDate) {
