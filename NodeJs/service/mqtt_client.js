@@ -2,7 +2,7 @@ const mqtt = require('mqtt')
 
 let client = null;
 
-const host = '192.168.138.91'
+const host = '192.168.239.91'
 const porti = '1885'
 
 
@@ -13,7 +13,7 @@ client.on('message', (topic, payload) => {
 
 exports.connect = (clientId) => {
   const connectUrl = `mqtt://${host}:${porti}`
-  const client = mqtt.connect(connectUrl, {
+  client = mqtt.connect(connectUrl, {
     clientId,
     clean: true,
     connectTimeout: 4000,
@@ -24,12 +24,13 @@ exports.connect = (clientId) => {
 
   client.on('connect', () => {
     console.log('Connected')
+    client.subscribe('lock/+/events');
   })
 }
 
 exports.publish = (userId, lockId, message) => {
   let topic = createTopicPath(userId, lockId);
-  client.publish(topic, message, { qos: 2, retain: false }, (error) => {
+  client.publish(topic, message, { qos: 1, retain: false }, (error) => {
     if (error) {
       return error;
     }
@@ -38,7 +39,7 @@ exports.publish = (userId, lockId, message) => {
 
 
 function createTopicPath(user, lock) {
-  return `user/${user}/lock/${lock}/actions`;
+  return `/lock/${lock}/actions`;
 }
 
 //Basic example of mqtt subscribe

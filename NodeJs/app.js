@@ -10,6 +10,10 @@ let heartbeatRouter = require("./routes/heartbeat");
 let loginRouter = require("./routes/login");
 let lockRouter = require("./routes/lock");
 let mqtt = require("./service/mqtt_client");
+
+const moment = require('moment-timezone');
+moment.tz.setDefault('Europe/Copenhagen');
+
 const mongoose = require("mongoose");
 
 mqtt.connect("server");
