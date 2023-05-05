@@ -13,6 +13,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include "time.h"
 
 // RDIF
 //  Constants
@@ -34,7 +35,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 // JSON buffer size
-const size_t bufferSize = JSON_OBJECT_SIZE(12);
+const size_t bufferSize = JSON_OBJECT_SIZE(20);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
@@ -45,10 +46,10 @@ const char *mqtt_password = "ahash";
 const int mqtt_port = 1885;
 
 // Auxiliar variables to store the current output state
-String redLED_State = "off";
-String blueLED_State = "off";
-String whiteLED_State = "off";
-String greenLED_State = "off";
+String redLED_State = "false";
+String blueLED_State = "false";
+String whiteLED_State = "false";
+String greenLED_State = "false";
 
 // Assign output variables to GPIO pins
 const int redLED = 25;   // RedLED
@@ -62,6 +63,11 @@ unsigned long currentTime = millis();
 unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
+
+//Time
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -83,13 +89,25 @@ void setLED(int pin, String &state, bool desiredState)
   if (desiredState)
   {
     digitalWrite(pin, HIGH);
-    state = "on";
+    state = "true";
   }
   else
   {
     digitalWrite(pin, LOW);
-    state = "off";
+    state = "false";
   }
+}
+
+String localTime()
+{
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return "failed";
+  }
+  char timeStringBuff[50];
+  strftime(timeStringBuff, sizeof(timeStringBuff), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  return timeStringBuff;
 }
 
 void setup()
@@ -150,6 +168,10 @@ void setup()
 
   // Initialize NTP client
   timeClient.begin();
+
+  //init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  localTime();
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -275,31 +297,34 @@ void heartbeat()
   // Create JSON document
   StaticJsonDocument<bufferSize> jsonDoc;
   JsonObject json = jsonDoc.to<JsonObject>();
+  JsonObject sysInf = jsonDoc.createNestedObject("System_Information");
+  JsonObject wifiInf = jsonDoc.createNestedObject("Wifi_Information");
+  JsonObject ledStates = jsonDoc.createNestedObject("States");
 
   // Get system information
   json["Id"] = ESP.getEfuseMac();
-  json["cpuFreq"] = ESP.getCpuFreqMHz();
-  json["freeMem"] = ESP.getFreeHeap();
-  json["heapSize"] = ESP.getHeapSize();
-
-  // Get current time
-  timeClient.update();
-  json["time"] = timeClient.getFormattedTime();
+  sysInf["cpuFreq"] = ESP.getCpuFreqMHz();
+  sysInf["freeMem"] = ESP.getFreeHeap();
+  sysInf["heapSize"] = ESP.getHeapSize();
+  String dateTime = localTime();
+  sysInf["dateTime"] = dateTime;
 
   // Get Wi-Fi status
-  json["ssid"] = WiFi.SSID();
-  json["signalStrength"] = WiFi.RSSI();
-  json["ipAddress"] = WiFi.localIP().toString();
+  wifiInf["ssid"] = WiFi.SSID();
+  wifiInf["signalStrength"] = WiFi.RSSI();
+  wifiInf["ipAddress"] = WiFi.localIP().toString();
 
   // States
-  json["red_led_state"] = redLED_State;
-  json["blue_led_state"] = blueLED_State;
-  json["white_led_state"] = whiteLED_State;
-  json["green_led_state"] = greenLED_State;
+  ledStates["RFID"] = blueLED_State;
+  ledStates["doorLocked"] = redLED_State;
+  ledStates["doorOpened"] = whiteLED_State;
+  ledStates["doorUnlocked"] = greenLED_State;
 
   // Serialize JSON document to string
   String jsonString;
   serializeJson(jsonDoc, jsonString);
+  //serializeJsonPretty(jsonDoc, jsonString);
+  Serial.print(jsonString);
   const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
@@ -322,41 +347,13 @@ void publishMessageMQTT(const char* topic, const char* message)
   client.publish(topic, message);
 }
 
-void tempPrint()
-{
-  // Get system information
-  Serial.print("ESP32 ID: ");
-  uint64_t chipId = ESP.getEfuseMac();
-  Serial.printf("%04X%08X\n", (uint16_t)(chipId >> 32), (uint32_t)chipId);
-  Serial.print("CPU frequency: ");
-  Serial.println(ESP.getCpuFreqMHz());
-  Serial.print("Free memory: ");
-  Serial.println(ESP.getFreeHeap());
-  Serial.print("Available heap size: ");
-  Serial.println(ESP.getHeapSize());
-
-  // Get current time
-  timeClient.update();
-  Serial.print("Current time: ");
-  Serial.println(timeClient.getFormattedTime());
-
-  // Get Wi-Fi status
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-  Serial.print("Signal strength: ");
-  Serial.println(WiFi.RSSI());
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
 void loop()
 {
   static unsigned long lastHeartbeatTime = 0;
   if (millis() - lastHeartbeatTime >= 60000)
   {
     lastHeartbeatTime = millis();
-    //heartbeat();
-    tempPrint();
+    heartbeat();
   }
 
   readRFID();
