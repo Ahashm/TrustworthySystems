@@ -14,3 +14,8 @@ exports.verifyToken = (req, res, next) => {
         return res.status(401).json({ message: "Invalid token" });
     }
 };
+
+exports.sign = (userId) => {
+    const token = jwt.sign({ userId: user._id }, "secret_key");
+    return token;
+}

@@ -1,5 +1,6 @@
 var express = require('express');
 const User = require("../models/user");
+const verification = require("../verification/jwt_verification");
 var router = express.Router();
 
 /* GET users listing. */
@@ -24,7 +25,7 @@ router.post("/", async (req, res) => {
         return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ userId: user._id }, "secret_key");
+    const token = verification.sign(user._id);
     res.json({ success: true, token });
 });
 
