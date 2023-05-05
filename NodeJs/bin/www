@@ -3,8 +3,11 @@ var debug = require("debug")("semester-project-in-trustworthy-systems:server");
 var http = require("http");
 const cors = require("cors");
 
-app.use(cors());
-
+app.use(
+  cors({
+    origin: "http://localhost:4200",
+  })
+);
 /**
  * Get port from environment and store in Express.
  */

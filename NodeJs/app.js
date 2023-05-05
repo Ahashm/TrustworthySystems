@@ -31,7 +31,6 @@ app.use((req, res, next) => {
   next();
 });
 
-/*
 // Connect to MongoDB database
 mongoose.connect("mongodb://localhost:27017/users", {
   useNewUrlParser: true,
@@ -41,7 +40,7 @@ const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
 db.once("open", function () {
   console.log("Connected to MongoDB database");
-});*/
+});
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
@@ -63,5 +62,4 @@ module.exports = app;
 
 app.listen(port, (req, res) => {
   console.log(`Server running, listening on port ${port}`);
-})
-
+});
