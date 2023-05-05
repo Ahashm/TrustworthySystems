@@ -1,6 +1,6 @@
 var express = require("express");
 var router = express.Router();
-const moment = require('moment-timezone');
+const moment = require("moment-timezone");
 const test = require("../service/mqtt_client");
 const verifyToken = require("../verification/jwt_verification").verifyToken;
 
@@ -18,32 +18,32 @@ router.post("/close", verifyToken, function (req, res) {
 });
 
 function interactWithLock(req, message) {
-    let { lockId, time } = req.body;
-    let userId = req.userId;
-    let receivedDate = moment(time);
-    let isAcceptable = isAcceptableTime(receivedDate);
-    if (isAcceptable) {
-        let formattedMessage = formatMessage(receivedDate, message);
-        test.publish(userId, lockId, formattedMessage);
-        sucess = true;
-    }
+  let { lockId, time } = req.body;
+  let userId = req.userId;
+  let receivedDate = moment(time);
+  let isAcceptable = isAcceptableTime(receivedDate);
+  if (isAcceptable) {
+    let formattedMessage = formatMessage(receivedDate, message);
+    test.publish(userId, lockId, formattedMessage);
+    sucess = true;
+  }
 
   return isAcceptable;
 }
 
 function isAcceptableTime(receivedDate) {
-    let now = moment();
-    return receivedDate < now;
+  let now = moment();
+  return receivedDate < now;
 }
 
 function formatMessage(date, message) {
-    let stringDate = date.format('YYYY-MM-DD, HH:mm:ss');
-    let formattedMessage = {
-        message: message,
-        date: stringDate
-    }
+  let stringDate = date.format("YYYY-MM-DD, HH:mm:ss");
+  let formattedMessage = {
+    message: message,
+    date: stringDate,
+  };
 
-    return JSON.stringify(formattedMessage);
+  return JSON.stringify(formattedMessage);
 }
 
 module.exports = router;

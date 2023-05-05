@@ -3,15 +3,6 @@ import { Component } from '@angular/core';
 import { response } from 'express';
 import { ActivatedRoute } from '@angular/router';
 
-export class QuickTest {
-  time: Date;
-  lockId: string;
-  constructor(lockId: string) {
-    this.lockId = lockId;
-    this.time = new Date();
-  }
-}
-
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -23,7 +14,6 @@ export class HomeComponent {
   notifications = ['Notification 1', 'Notification 2', 'Notification 3'];
   showNotification = false;
   historyLog: { date: Date; event: string; id: string }[] = [];
-  quickTest: QuickTest[] = [];
   thisID: string = '44215962539792';
   token: string = '';
 
@@ -42,15 +32,16 @@ export class HomeComponent {
       Authorization: this.token,
     });
 
-    const quickTestInstance = new QuickTest('321');
-    this.quickTest.push(quickTestInstance);
+    const time = new Date();
+    const lockId = '321';
+
     //http req
 
     const url = this.alarmOn
       ? 'http://localhost:3002/lock/open'
       : 'http://localhost:3002/lock/close';
-    this.http.post(url, this.quickTest, { headers }).subscribe((response) => {
-      console.log(this.quickTest);
+    this.http.post(url, { time, lockId }, { headers }).subscribe((response) => {
+      console.log(time, lockId);
       console.log(
         'Lock ' + (this.alarmOn ? 'opened' : 'closed') + ' successfully.'
       );
