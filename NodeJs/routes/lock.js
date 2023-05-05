@@ -16,21 +16,32 @@ router.post('/close', verifyToken, function (req, res) {
 });
 
 function interactWithLock(req, message) {
-    let { lockId, time} = req.body;
+    let { lockId, time } = req.body;
     let userId = req.userId;
-    let isAcceptable = isAcceptableTime(time);
+    let receivedDate = new Date(time);
+    let isAcceptable = isAcceptableTime(receivedDate);
     if (isAcceptable) {
-        mqtt.publish(userId, lockId, message);
+        let formattedMessage = formatMessage(receivedDate, message);
+        mqtt.publish(userId, lockId, formattedMessage);
         sucess = true;
     }
 
     return isAcceptable;
 }
 
-function isAcceptableTime(time) {
-    let receivedDate = new Date(time);
+function isAcceptableTime(receivedDate) {
     let now = Date.now();
     return receivedDate < now;
+}
+
+function formatMessage(date, message) {
+    let date = date.toISOString().replace('T', ' ').slice(0, 19);
+    let formattedMessage = {
+        message: message,
+        date: date
+    }
+
+    return JSON.stringify(formattedMessage);
 }
 
 module.exports = router;
