@@ -14,6 +14,7 @@
 #include <chrono>
 #include <thread>
 #include "time.h"
+#include <TimeLib.h>
 
 // RDIF
 //  Constants
@@ -101,7 +102,7 @@ void setLED(int pin, String &state, bool desiredState)
 String localTime()
 {
   struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
+  if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return "failed";
   }
@@ -136,11 +137,11 @@ void setup()
   }
   Serial.println("Connected to the WiFi network");
   /*
-  // connecting to a mqtt broker
-  client.setServer(mqtt_broker, mqtt_port);
-  client.setCallback(callback);
-  while (!client.connected())
-  {
+    // connecting to a mqtt broker
+    client.setServer(mqtt_broker, mqtt_port);
+    client.setCallback(callback);
+    while (!client.connected())
+    {
     String client_id = "esp32-client-";
     client_id += String(WiFi.macAddress());
     Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
@@ -154,10 +155,10 @@ void setup()
       Serial.print(client.state());
       delay(2000);
     }
-  }
-  // publish and subscribe
-  client.publish(topic, "VirkPlz");
-  client.subscribe(topic);
+    }
+    // publish and subscribe
+    client.publish(topic, "VirkPlz");
+    client.subscribe(topic);
   */
   Serial.println(F("Initialize System"));
   // init rfid D8,D5,D6,D7
@@ -174,6 +175,42 @@ void setup()
   localTime();
 }
 
+// function to convert timestamp string to time_t
+time_t parseTimestamp(String timestamp) {
+  int year, month, day, hour, minute, second;
+  sscanf(timestamp.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+  struct tm timeinfo = {0};
+  timeinfo.tm_year = year - 1900;
+  timeinfo.tm_mon = month - 1;
+  timeinfo.tm_mday = day;
+  timeinfo.tm_hour = hour;
+  timeinfo.tm_min = minute;
+  timeinfo.tm_sec = second;
+  return mktime(&timeinfo);
+}
+
+bool checkTimeElapsed(String currentESPTime, String serverTime) {
+  // get current timestamp
+  String currentTimestamp = currentESPTime;
+  Serial.println("TimeNow: " + currentTimestamp);
+
+  // get previous timestamp from server
+  String previousTimestamp = serverTime;
+  Serial.println("Servertime: " + previousTimestamp);
+
+  // calculate elapsed time in seconds
+  time_t currentTime = parseTimestamp(currentTimestamp);
+  time_t previousTime = parseTimestamp(previousTimestamp);
+  int elapsedSeconds = difftime(currentTime, previousTime);
+
+  // check if elapsed time is less than 10 seconds
+  if (elapsedSeconds <= 10) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void callback(char *topic, byte *payload, unsigned int length)
 {
   String payloadStr = "";
@@ -188,15 +225,21 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println();
   Serial.println("-----------------------");
 
-  if (payloadStr == "unlock")
-  {
-    setLED(redLED, redLED_State, false);
-    setLED(greenLED, greenLED_State, true);
-  }
-  else if (payloadStr == "lock")
-  {
-    setLED(greenLED, greenLED_State, false);
-    setLED(redLED, redLED_State, true);
+  String currentTime = localTime();
+  if (checkTimeElapsed(currentTime, payloadStr) == true) {
+    if (payloadStr == "unlock")
+    {
+      setLED(redLED, redLED_State, false);
+      setLED(greenLED, greenLED_State, true);
+    } else if (payloadStr == "lock")
+    {
+      setLED(greenLED, greenLED_State, false);
+      setLED(redLED, redLED_State, true);
+    } else {
+      return;
+    }
+  } else {
+    return;
   }
 }
 
@@ -349,29 +392,29 @@ void publishMessageMQTT(const char* topic, const char* message)
 
 void loop()
 {
-  static unsigned long lastHeartbeatTime = 0;
-  if (millis() - lastHeartbeatTime >= 60000)
-  {
+    static unsigned long lastHeartbeatTime = 0;
+    if (millis() - lastHeartbeatTime >= 60000)
+    {
     lastHeartbeatTime = millis();
     heartbeat();
-  }
+    }
 
-  readRFID();
+    readRFID();
 
-  int doorOpenDistance = ultrasonicSensor();
+    int doorOpenDistance = ultrasonicSensor();
 
-  if (doorOpenDistance > 20)
-  {
+    if (doorOpenDistance > 20)
+    {
     setLED(redLED, redLED_State, false);
     setLED(greenLED, greenLED_State, true);
     setLED(whiteLED, whiteLED_State, true);
-  }
-  else
-  {
+    }
+    else
+    {
     setLED(greenLED, greenLED_State, false);
     setLED(whiteLED, whiteLED_State, false);
     setLED(redLED, redLED_State, true);
-  }
+    }
 
-  client.loop();
+    client.loop();
 }
