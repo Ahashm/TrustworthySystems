@@ -1,7 +1,7 @@
 var express = require("express");
 var router = express.Router();
 const moment = require("moment-timezone");
-const test = require("../service/mqtt_client");
+const mqttClient = require("../service/mqtt_client");
 const verifyToken = require("../verification/jwt_verification").verifyToken;
 
 //missing timestamp in these two endponts, as well as the validation of said timestamp. Also needs to send timestamp to mqtt
@@ -24,7 +24,7 @@ function interactWithLock(req, message) {
   let isAcceptable = isAcceptableTime(receivedDate);
   if (isAcceptable) {
     let formattedMessage = formatMessage(receivedDate, message);
-    test.publish(userId, lockId, formattedMessage);
+    mqttClient.publish(userId, lockId, formattedMessage);
     sucess = true;
   }
 
@@ -37,7 +37,7 @@ function isAcceptableTime(receivedDate) {
 }
 
 function formatMessage(date, message) {
-  let stringDate = date.format("YYYY-MM-DD, HH:mm:ss");
+  let stringDate = date.format("YYYY-MM-DD HH:mm:ss");
   let formattedMessage = {
     message: message,
     date: stringDate,

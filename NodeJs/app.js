@@ -36,9 +36,11 @@ app.use((req, res, next) => {
 });
 
 // Connect to MongoDB database
-mongoose.connect("mongodb://localhost:27017/users", {
+mongoose.connect("mongodb://root:rootpassword@192.168.239.91:27017", {
   useNewUrlParser: true,
   useUnifiedTopology: true, // added this line
+  dbName: "smart-door-lock",
+  authMechanism: "DEFAULT"
 });
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));

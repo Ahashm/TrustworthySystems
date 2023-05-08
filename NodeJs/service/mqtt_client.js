@@ -1,10 +1,18 @@
 const mqtt = require('mqtt')
+const heartbeatModel = require('../models/heartbeats')
 
 let client = null;
 
-const host = '192.168.239.91'
-const porti = '1885'
+const host = 'broker.hivemq.com'
+const porti = '1883'
 
+const lockTopicPath = "lock/+/"
+const events = "events";
+const heartbeat = "heartbeats";
+
+const idPosition = () => {
+  return lockTopicPath.split("/").indexOf("+");
+};
 
 /*
 client.on('message', (topic, payload) => {
@@ -25,7 +33,23 @@ exports.connect = (clientId) => {
   client.on('connect', () => {
     console.log('Connected')
     client.subscribe('lock/+/events');
-  })
+    client.subscribe(lockTopicPath + heartbeat);
+  });
+
+  client.on('message', (topic, payload) => {
+    let type = topic.split("/").pop();
+    switch (type){
+      case heartbeat:{
+        let heartbeat = JSON.parse(payload);
+        heartbeatModel.createHeartbeat(heartbeat);
+        break;
+      }
+      default : {
+        console.log("what");
+      }
+    }
+    console.log('Received Message:', topic, payload.toString())
+  });
 }
 
 exports.publish = (userId, lockId, message) => {
@@ -38,7 +62,7 @@ exports.publish = (userId, lockId, message) => {
 }
 
 
-function createTopicPath(user, lock) {
+function createTopicPath(lock) {
   return `/lock/${lock}/actions`;
 }
 
