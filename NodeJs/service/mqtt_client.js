@@ -1,5 +1,6 @@
 const mqtt = require('mqtt')
 const heartbeatModel = require('../models/heartbeats')
+const eventModel = require('../models/events')
 
 let client = null;
 
@@ -44,6 +45,11 @@ exports.connect = (clientId) => {
         heartbeatModel.createHeartbeat(heartbeat);
         break;
       }
+      case events:{
+        let event = JSON.parse(payload);
+        eventModel.createEvent(event);
+        break;
+      }
       default : {
         console.log("what");
       }
@@ -63,7 +69,7 @@ exports.publish = (userId, lockId, message) => {
 
 
 function createTopicPath(lock) {
-  return `/lock/${lock}/actions`;
+  return `lock/${lock}/actions`;
 }
 
 //Basic example of mqtt subscribe
