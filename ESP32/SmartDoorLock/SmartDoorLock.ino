@@ -36,12 +36,12 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 // JSON buffer size
-const size_t bufferSize = JSON_OBJECT_SIZE(20);
+const size_t bufferSize = JSON_OBJECT_SIZE(18);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
-const char *mqtt_broker = "192.168.138.91";
-const char *topic = "esp32/ahash";
+const char *mqtt_broker = "192.168.239.91";
+const char *topic = "/lock/321/actions";
 const char *mqtt_username = "ahash";
 const char *mqtt_password = "ahash";
 const int mqtt_port = 1885;
@@ -136,12 +136,12 @@ void setup()
     Serial.println("Connecting to WiFi..");
   }
   Serial.println("Connected to the WiFi network");
-  /*
-    // connecting to a mqtt broker
-    client.setServer(mqtt_broker, mqtt_port);
-    client.setCallback(callback);
-    while (!client.connected())
-    {
+
+  // connecting to a mqtt broker
+  client.setServer(mqtt_broker, mqtt_port);
+  client.setCallback(callback);
+  while (!client.connected())
+  {
     String client_id = "esp32-client-";
     client_id += String(WiFi.macAddress());
     Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
@@ -155,11 +155,11 @@ void setup()
       Serial.print(client.state());
       delay(2000);
     }
-    }
-    // publish and subscribe
-    client.publish(topic, "VirkPlz");
-    client.subscribe(topic);
-  */
+  }
+  // publish and subscribe
+  client.publish(topic, "{\"System_Information\":{\"cpuFreq\":240,\"freeMem\":248316,\"heapSize\":327816,\"dateTime\":\"2023-05-05 11:38:59\"},\"Wifi_Information\":{\"ssid\":\"T14One\",\"signalStrength\":-46,\"ipAddress\":\"192.168.239.150\"},\"States\":{\"RFID\":\"false\",\"doorLocked\":\"false\",\"doorOpened\":\"true\",\"doorUnlocked\":\"true\"},\"Id\":44215962539792}");
+  client.subscribe(topic);
+
   Serial.println(F("Initialize System"));
   // init rfid D8,D5,D6,D7
   SPI.begin();
@@ -173,6 +173,30 @@ void setup()
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   localTime();
+}
+
+void publishMessageMQTT(const char* topic, const char* message)
+{
+  //String str = message;
+
+  // Length (with one extra character for the null terminator)
+  //int str_len = str.length() + 1;
+
+  // Prepare the character array (the buffer)
+  //char char_array[str_len];
+
+  // Copy it over
+  //str.toCharArray(char_array, str_len);
+  if (client.publish(topic, message)) {
+    Serial.println("Publish Success");
+  } else {
+    Serial.println("Failed to send message.");
+    Serial.print("Error code: ");
+    Serial.println(client.state());
+    Serial.println(" - ");
+    delay(1000);
+  }
+
 }
 
 // function to convert timestamp string to time_t
@@ -299,7 +323,7 @@ void readRFID(void)
   setLED(redLED, redLED_State, false);
   setLED(greenLED, greenLED_State, true);
   auto start_time = std::chrono::system_clock::now();
-  while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 10)
+  while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 3)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -311,6 +335,13 @@ void readRFID(void)
   rfid.PICC_HaltA();
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
+
+  // Serialize JSON document to string
+  String messageString = "Nicker";
+  const char *message = messageString.c_str();
+
+  // Send heartbeat message to server
+  publishMessageMQTT("/lock/321/actions", message);
 }
 /**
     Helper routine to dump a byte array as hex values to Serial.
@@ -338,10 +369,10 @@ void printDec(byte *buffer, byte bufferSize)
 void heartbeat()
 {
   // Create JSON document
-  StaticJsonDocument<bufferSize> jsonDoc;
+  StaticJsonDocument<300> jsonDoc;
   JsonObject json = jsonDoc.to<JsonObject>();
-  JsonObject sysInf = jsonDoc.createNestedObject("System_Information");
-  JsonObject wifiInf = jsonDoc.createNestedObject("Wifi_Information");
+  JsonObject sysInf = jsonDoc.createNestedObject("SystemInformation");
+  JsonObject wifiInf = jsonDoc.createNestedObject("WifiInformation");
   JsonObject ledStates = jsonDoc.createNestedObject("States");
 
   // Get system information
@@ -367,54 +398,42 @@ void heartbeat()
   String jsonString;
   serializeJson(jsonDoc, jsonString);
   //serializeJsonPretty(jsonDoc, jsonString);
-  Serial.print(jsonString);
+  //Serial.print(jsonString);
   const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
-  publishMessageMQTT("/ESP32/Heartbeat", message);
-}
-
-void publishMessageMQTT(const char* topic, const char* message)
-{
-  //String str = message;
-
-  // Length (with one extra character for the null terminator)
-  //int str_len = str.length() + 1;
-
-  // Prepare the character array (the buffer)
-  //char char_array[str_len];
-
-  // Copy it over
-  //str.toCharArray(char_array, str_len);
-
-  client.publish(topic, message);
+  Serial.println("HEARTBEAT SENDING");
+  delay(1000);
+  publishMessageMQTT("/lock/321/actions", message);
+  delay(1000);
+  Serial.println("HEARTBEAT SENT");
 }
 
 void loop()
 {
-    static unsigned long lastHeartbeatTime = 0;
-    if (millis() - lastHeartbeatTime >= 60000)
-    {
+  static unsigned long lastHeartbeatTime = 0;
+  if (millis() - lastHeartbeatTime >= 60000)
+  {
     lastHeartbeatTime = millis();
     heartbeat();
-    }
+  }
 
-    readRFID();
+  readRFID();
 
-    int doorOpenDistance = ultrasonicSensor();
+  int doorOpenDistance = ultrasonicSensor();
 
-    if (doorOpenDistance > 20)
-    {
+  if (doorOpenDistance > 20)
+  {
     setLED(redLED, redLED_State, false);
     setLED(greenLED, greenLED_State, true);
     setLED(whiteLED, whiteLED_State, true);
-    }
-    else
-    {
+  }
+  else
+  {
     setLED(greenLED, greenLED_State, false);
     setLED(whiteLED, whiteLED_State, false);
     setLED(redLED, redLED_State, true);
-    }
+  }
 
-    client.loop();
+  client.loop();
 }
