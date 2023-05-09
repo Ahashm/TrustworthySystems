@@ -15,7 +15,7 @@ router.post("/open", verifyToken, function (req, res) {
   }
 
   let message = isSuccess ? "Published message" : errorMsg;
-  res.json({ success: isSuccess });
+  res.json({ success: isSuccess, message: message });
 });
 
 router.post("/close", verifyToken, function (req, res) {
