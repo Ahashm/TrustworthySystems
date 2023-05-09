@@ -1,54 +1,36 @@
 const clients = {};
-const lostConnections = {};
-let idIndex = 1;
 
-exports.register = (ip) => {
-    let id = randomNumber();
-    let heartbeat = {
-        id: id,
-        senderIp: ip
+exports.registerOnline = (id) => {
+    if (!containsId(id)) {
+        addElement(id);
     }
 
-    let client = {
-        heartbeat: heartbeat,
-    };
-
-    setNextDeadline(client);
-    addElement(client);
-    return heartbeat;
-}
-
-exports.ping = (id) => {
     let client = clients[id];
     clearTimeout(client.deadline);
     setNextDeadline(client);
-    console.log(`Heartbeat received for id: ${client.heartbeat.id}`);
-    return client.heartbeat;
+    console.log(`Heartbeat received for id: ${id}`);
 }
 
-exports.clients = () => {
-    let heartbeats = {};
-    for(let key in clients){
-        heartbeats[key] = clients[key].heartbeat;
-    }
-    return heartbeats;
+exports.isOnline = (id) => {
+    let hasConnection = containsId(id);
+    console.log(`Lock: ${id} is currently ${hasConnection ? "online" : "offline"}`);
+    return hasConnection;
 }
 
-
-function randomNumber() {
-    let id = idIndex++;
-    return id;
+function addElement(id) {
+    let client = {};
+    clients[id] = client;
 }
 
-function addElement(client){
-    clients[client.heartbeat.id] = client;
-}
-
-function setNextDeadline(client){
+function setNextDeadline(client) {
     client.deadline = setTimeout(() => {
         let id = client.heartbeat.id;
         delete clients[id];
         lostConnections[id] = client.heartbeat;
         console.log(`Lost connection to id: ${id}`);
-    }, 5000, client)
+    }, 90000, client)
+}
+
+function containsId(id){
+    return clients[id] != undefined;
 }

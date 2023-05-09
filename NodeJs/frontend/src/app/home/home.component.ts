@@ -38,7 +38,7 @@ export class HomeComponent {
     });
 
     const time = new Date();
-    const lockId = '321';
+    const lockId = this.thisID;
 
     //http req
 

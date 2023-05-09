@@ -1,6 +1,8 @@
-const mqtt = require('mqtt')
-const heartbeatModel = require('../models/heartbeats')
-const eventModel = require('../models/events')
+const mqtt = require('mqtt');
+const heartbeatModel = require('../models/heartbeats');
+const heartbeatService = require('./heartbeatService');
+const eventModel = require('../models/events');
+
 
 let client = null;
 
@@ -10,10 +12,6 @@ const porti = '1883'
 const lockTopicPath = "lock/+/"
 const events = "events";
 const heartbeat = "heartbeats";
-
-const idPosition = () => {
-  return lockTopicPath.split("/").indexOf("+");
-};
 
 exports.connect = (clientId) => {
   const connectUrl = `mqtt://${host}:${porti}`
@@ -38,6 +36,8 @@ exports.connect = (clientId) => {
       case heartbeat:{
         let heartbeat = JSON.parse(payload);
         heartbeatModel.createHeartbeat(heartbeat);
+        heartbeatService.registerOnline(heartbeat.Id);
+        console.log('Received Message:', topic, payload.toString())
         break;
       }
       case events:{
@@ -49,12 +49,15 @@ exports.connect = (clientId) => {
         console.log("what");
       }
     }
-    console.log('Received Message:', topic, payload.toString())
   });
 }
 
-exports.publish = (userId, lockId, message) => {
-  let topic = createTopicPath(userId, lockId);
+exports.publish = (lockId, message) => {
+  if(!heartbeatService.isOnline(lockId)){
+    return "The lock is currently offline.";
+  }
+  
+  let topic = createTopicPath(lockId);
   client.publish(topic, message, { qos: 1, retain: false }, (error) => {
     if (error) {
       return error;
