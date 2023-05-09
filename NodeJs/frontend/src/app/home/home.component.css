@@ -1,9 +1,58 @@
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+
 body {
   background-color: #f7f7f7;
   font-family: Arial, sans-serif;
 }
 
+.lock {
+  margin-top: 50px;
+}
+
+.title {
+  margin-top: 20px;
+}
+
+.mat-tab-label-container {
+  max-width: 100%;
+}
+
+.mat-tab-labels {
+  max-width: 100%;
+}
+
+.mat-tab-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.mat-tab-header {
+  order: 2;
+}
+
+.mat-tab-body-wrapper {
+  order: 1;
+  flex-grow: 1;
+}
+
+.mat-tab-body {
+  height: calc(100vh - 100px);
+}
+
+button[mat-icon-button] {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.username {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .container {
+  position: relative;
   text-align: center;
   margin-top: 50px;
   position: relative;
@@ -13,8 +62,101 @@ body {
   padding: 40px;
 }
 
+.menu-toggle {
+  display: block;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+}
+
+.menu-toggle span {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -15px;
+  background-color: #000;
+  transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle span:before,
+.menu-toggle span:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 30px;
+  height: 4px;
+  background-color: #000;
+  transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle span:before {
+  transform: translateY(-10px);
+}
+
+.menu-toggle span:after {
+  transform: translateY(10px);
+}
+
+.menu-open span {
+  transform: rotate(45deg);
+}
+
+.menu-open span:before {
+  transform: rotate(90deg) translateY(0);
+}
+
+.menu-open span:after {
+  transform: rotate(-90deg) translateY(0);
+}
+
+.tab-group-container {
+  position: relative;
+}
+
+.menu-button {
+  position: absolute;
+  bottom: -40px; /* adjust this value to position the button as desired */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.menu {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background-color: #fff;
+}
+
+.menu-items {
+  display: none;
+  position: absolute;
+  top: 48px;
+  right: 0;
+  z-index: 1;
+  background-color: white;
+  padding: 16px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.show .menu-items {
+  display: block;
+}
+
 .title {
+  font-family: "Helvetica Neue", sans-serif;
+  font-weight: bold;
   font-size: 2.5rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
   margin-bottom: 30px;
   color: #333;
 }
@@ -34,12 +176,12 @@ body {
 }
 
 .lock-circle.on {
-  background-color: #ff4d4d;
+  background-color: #ff0000;
   color: white;
 }
 
 .lock-circle.off {
-  background-color: #22bb33;
+  background-color: #001cd4;
   color: white;
 }
 
