@@ -13,6 +13,8 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include "time.h"
+#include <TimeLib.h>
 
 // RDIF
 //  Constants
@@ -34,21 +36,23 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 // JSON buffer size
-const size_t bufferSize = JSON_OBJECT_SIZE(12);
+const size_t bufferSize = JSON_OBJECT_SIZE(18);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
-const char *mqtt_broker = "192.168.138.91";
-const char *topic = "esp32/ahash";
+//const char *mqtt_broker = "192.168.239.91";
+const char *mqtt_broker = "broker.hivemq.com";
+const char *topic = "/lock/321/actions";
 const char *mqtt_username = "ahash";
 const char *mqtt_password = "ahash";
-const int mqtt_port = 1885;
+//const int mqtt_port = 1885;
+const int mqtt_port = 1883;
 
 // Auxiliar variables to store the current output state
-String redLED_State = "off";
-String blueLED_State = "off";
-String whiteLED_State = "off";
-String greenLED_State = "off";
+String redLED_State = "false";
+String blueLED_State = "false";
+String whiteLED_State = "false";
+String greenLED_State = "false";
 
 // Assign output variables to GPIO pins
 const int redLED = 25;   // RedLED
@@ -62,6 +66,11 @@ unsigned long currentTime = millis();
 unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
+
+//Time
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -78,18 +87,16 @@ long duration;
 float distanceCm;
 float distanceInch;
 
-void setLED(int pin, String &state, bool desiredState)
+String localTime()
 {
-  if (desiredState)
-  {
-    digitalWrite(pin, HIGH);
-    state = "on";
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return "failed";
   }
-  else
-  {
-    digitalWrite(pin, LOW);
-    state = "off";
-  }
+  char timeStringBuff[50];
+  strftime(timeStringBuff, sizeof(timeStringBuff), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  return timeStringBuff;
 }
 
 void setup()
@@ -117,7 +124,7 @@ void setup()
     Serial.println("Connecting to WiFi..");
   }
   Serial.println("Connected to the WiFi network");
-  /*
+
   // connecting to a mqtt broker
   client.setServer(mqtt_broker, mqtt_port);
   client.setCallback(callback);
@@ -138,9 +145,9 @@ void setup()
     }
   }
   // publish and subscribe
-  client.publish(topic, "VirkPlz");
+  client.publish(topic, "{\"System_Information\":{\"cpuFreq\":240,\"freeMem\":248316,\"heapSize\":327816,\"dateTime\":\"2023-05-05 11:38:59\"},\"Wifi_Information\":{\"ssid\":\"T14One\",\"signalStrength\":-46,\"ipAddress\":\"192.168.239.150\"},\"States\":{\"RFID\":\"false\",\"doorLocked\":\"false\",\"doorOpened\":\"true\",\"doorUnlocked\":\"true\"},\"Id\":44215962539792}");
   client.subscribe(topic);
-  */
+
   Serial.println(F("Initialize System"));
   // init rfid D8,D5,D6,D7
   SPI.begin();
@@ -150,6 +157,148 @@ void setup()
 
   // Initialize NTP client
   timeClient.begin();
+
+  //init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  localTime();
+}
+
+void publishMessageMQTT(const char* topic, const char* message)
+{
+  //String str = message;
+
+  // Length (with one extra character for the null terminator)
+  //int str_len = str.length() + 1;
+
+  // Prepare the character array (the buffer)
+  //char char_array[str_len];
+
+  // Copy it over
+  //str.toCharArray(char_array, str_len);
+  if (client.publish(topic, message)) {
+    Serial.println("Publish Success");
+  } else {
+    Serial.println("Failed to send message.");
+    Serial.print("Error code: ");
+    Serial.println(client.state());
+    Serial.println(" - ");
+    delay(1000);
+  }
+
+}
+
+void logIncident(String origin, String typeOfIncident, String idOfCard) {
+  // Create JSON document
+  StaticJsonDocument<300> jsonDoc;
+  JsonObject json = jsonDoc.to<JsonObject>();
+  JsonObject ledStates = jsonDoc.createNestedObject("States");
+
+  // Get system information
+  json["Id"] = ESP.getEfuseMac();
+  json["TypeOfIncident"] = typeOfIncident;
+  String dateTime = localTime();
+  json["dateTime"] = dateTime;
+
+  // States
+  ledStates["RFID"] = blueLED_State;
+  ledStates["doorLocked"] = redLED_State;
+  ledStates["doorOpened"] = whiteLED_State;
+  ledStates["doorUnlocked"] = greenLED_State;
+
+  if (origin == "RFID") {
+    json["RFID_id"] = idOfCard;
+    json["origin"] == "RFID card used";
+    json["DoorOpenDistance"] = "NULL";
+  } else if (origin == "Client") {
+    json["RFID_id"] = "NULL";
+    json["origin"] = "Call from client";
+    json["DoorOpenDistance"] = "NULL";
+  } else if (origin == "DoorOpen") {
+    json["DoorOpenDistance"] = idOfCard;
+    json["RFID_id"] = "NULL";
+    json["origin"] = "Call from client";
+  } else if (origin = "default") {
+    json["DoorOpenDistance"] = "NULL";
+    json["RFID_id"] = "NULL";
+    json["origin"] = "DoorStateChange";
+  } else if (origin = "heartbeat") {
+    json["DoorOpenDistance"] = "NULL";
+    json["RFID_id"] = "NULL";
+    json["origin"] = "heartbeat sent";
+  }
+
+  // Serialize JSON document to string
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+  //serializeJsonPretty(jsonDoc, jsonString);
+  Serial.print(jsonString);
+  const char *message = jsonString.c_str();
+
+  // Send heartbeat message to server
+  Serial.println("HEARTBEAT SENDING");
+  delay(1000);
+  String espId = json["Id"].as<String>();
+
+  String tempTopic = "lock/" + espId + "/events";
+  const char *incidentTopic = tempTopic.c_str();
+  Serial.println(tempTopic);
+  Serial.println("HEARTBEAT SENT");
+  publishMessageMQTT(incidentTopic, message);
+  delay(1000);
+  Serial.println("HEARTBEAT SENT");
+}
+
+
+void setLED(int pin, String &state, bool desiredState)
+{
+  if (desiredState)
+  {
+    digitalWrite(pin, HIGH);
+    state = "true";
+  }
+  else
+  {
+    digitalWrite(pin, LOW);
+    state = "false";
+  }
+  logIncident("default", "Doorlock statechaned", "");
+}
+
+
+// function to convert timestamp string to time_t
+time_t parseTimestamp(String timestamp) {
+  int year, month, day, hour, minute, second;
+  sscanf(timestamp.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+  struct tm timeinfo = {0};
+  timeinfo.tm_year = year - 1900;
+  timeinfo.tm_mon = month - 1;
+  timeinfo.tm_mday = day;
+  timeinfo.tm_hour = hour;
+  timeinfo.tm_min = minute;
+  timeinfo.tm_sec = second;
+  return mktime(&timeinfo);
+}
+
+bool checkTimeElapsed(String currentESPTime, String serverTime) {
+  // get current timestamp
+  String currentTimestamp = currentESPTime;
+  Serial.println("TimeNow: " + currentTimestamp);
+
+  // get previous timestamp from server
+  String previousTimestamp = serverTime;
+  Serial.println("Servertime: " + previousTimestamp);
+
+  // calculate elapsed time in seconds
+  time_t currentTime = parseTimestamp(currentTimestamp);
+  time_t previousTime = parseTimestamp(previousTimestamp);
+  int elapsedSeconds = difftime(currentTime, previousTime);
+
+  // check if elapsed time is less than 10 seconds
+  if (elapsedSeconds <= 10) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -166,15 +315,23 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println();
   Serial.println("-----------------------");
 
-  if (payloadStr == "unlock")
-  {
-    setLED(redLED, redLED_State, false);
-    setLED(greenLED, greenLED_State, true);
-  }
-  else if (payloadStr == "lock")
-  {
-    setLED(greenLED, greenLED_State, false);
-    setLED(redLED, redLED_State, true);
+  String currentTime = localTime();
+  if (checkTimeElapsed(currentTime, payloadStr) == true) {
+    if (payloadStr == "unlock")
+    {
+      setLED(redLED, redLED_State, false);
+      setLED(greenLED, greenLED_State, true);
+      logIncident("Client", "Doorlock unlocked", "Client");
+    } else if (payloadStr == "lock")
+    {
+      setLED(greenLED, greenLED_State, false);
+      setLED(redLED, redLED_State, true);
+      logIncident("Client", "Doorlock locked", "Client");
+    } else {
+      return;
+    }
+  } else {
+    return;
   }
 }
 
@@ -228,19 +385,24 @@ void readRFID(void)
   }
   Serial.print(F("RFID In dec: "));
   printDec(rfid.uid.uidByte, rfid.uid.size);
-
+  String rfid_idCode = "";
+  for (int i = 0; i < rfid.uid.size; i++) {
+    rfid_idCode += String(rfid.uid.uidByte[i], HEX);
+  }
+  logIncident("RFID", "RFID tag used", rfid_idCode);
   // Blue light
   setLED(blueLED, blueLED_State, true);
   setLED(redLED, redLED_State, false);
   setLED(greenLED, greenLED_State, true);
   auto start_time = std::chrono::system_clock::now();
-  while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 10)
+  while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 3)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   setLED(blueLED, blueLED_State, false);
   setLED(redLED, redLED_State, true);
   setLED(greenLED, greenLED_State, false);
+  logIncident("RFID", "RFID tag used", rfid_idCode);
   Serial.println();
   // Halt PICC
   rfid.PICC_HaltA();
@@ -273,90 +435,55 @@ void printDec(byte *buffer, byte bufferSize)
 void heartbeat()
 {
   // Create JSON document
-  StaticJsonDocument<bufferSize> jsonDoc;
+  StaticJsonDocument<300> jsonDoc;
   JsonObject json = jsonDoc.to<JsonObject>();
+  JsonObject sysInf = jsonDoc.createNestedObject("SystemInformation");
+  JsonObject wifiInf = jsonDoc.createNestedObject("WifiInformation");
+  JsonObject ledStates = jsonDoc.createNestedObject("States");
 
   // Get system information
   json["Id"] = ESP.getEfuseMac();
-  json["cpuFreq"] = ESP.getCpuFreqMHz();
-  json["freeMem"] = ESP.getFreeHeap();
-  json["heapSize"] = ESP.getHeapSize();
-
-  // Get current time
-  timeClient.update();
-  json["time"] = timeClient.getFormattedTime();
+  sysInf["cpuFreq"] = ESP.getCpuFreqMHz();
+  sysInf["freeMem"] = ESP.getFreeHeap();
+  sysInf["heapSize"] = ESP.getHeapSize();
+  String dateTime = localTime();
+  sysInf["dateTime"] = dateTime;
 
   // Get Wi-Fi status
-  json["ssid"] = WiFi.SSID();
-  json["signalStrength"] = WiFi.RSSI();
-  json["ipAddress"] = WiFi.localIP().toString();
+  wifiInf["ssid"] = WiFi.SSID();
+  wifiInf["signalStrength"] = WiFi.RSSI();
+  wifiInf["ipAddress"] = WiFi.localIP().toString();
 
   // States
-  json["red_led_state"] = redLED_State;
-  json["blue_led_state"] = blueLED_State;
-  json["white_led_state"] = whiteLED_State;
-  json["green_led_state"] = greenLED_State;
+  ledStates["RFID"] = blueLED_State;
+  ledStates["doorLocked"] = redLED_State;
+  ledStates["doorOpened"] = whiteLED_State;
+  ledStates["doorUnlocked"] = greenLED_State;
 
   // Serialize JSON document to string
   String jsonString;
   serializeJson(jsonDoc, jsonString);
+  //serializeJsonPretty(jsonDoc, jsonString);
+  //Serial.print(jsonString);
   const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
-  publishMessageMQTT("/ESP32/Heartbeat", message);
-}
-
-void publishMessageMQTT(const char* topic, const char* message)
-{
-  //String str = message;
-
-  // Length (with one extra character for the null terminator)
-  //int str_len = str.length() + 1;
-
-  // Prepare the character array (the buffer)
-  //char char_array[str_len];
-
-  // Copy it over
-  //str.toCharArray(char_array, str_len);
-
-  client.publish(topic, message);
-}
-
-void tempPrint()
-{
-  // Get system information
-  Serial.print("ESP32 ID: ");
-  uint64_t chipId = ESP.getEfuseMac();
-  Serial.printf("%04X%08X\n", (uint16_t)(chipId >> 32), (uint32_t)chipId);
-  Serial.print("CPU frequency: ");
-  Serial.println(ESP.getCpuFreqMHz());
-  Serial.print("Free memory: ");
-  Serial.println(ESP.getFreeHeap());
-  Serial.print("Available heap size: ");
-  Serial.println(ESP.getHeapSize());
-
-  // Get current time
-  timeClient.update();
-  Serial.print("Current time: ");
-  Serial.println(timeClient.getFormattedTime());
-
-  // Get Wi-Fi status
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-  Serial.print("Signal strength: ");
-  Serial.println(WiFi.RSSI());
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println("HEARTBEAT SENDING");
+  delay(1000);
+  publishMessageMQTT("locks/heartbeat", message);
+  delay(1000);
+  Serial.println("HEARTBEAT SENT");
 }
 
 void loop()
 {
   static unsigned long lastHeartbeatTime = 0;
+  static unsigned long lastUltrasonicTime = 0;
   if (millis() - lastHeartbeatTime >= 60000)
   {
     lastHeartbeatTime = millis();
-    //heartbeat();
-    tempPrint();
+    heartbeat();
+    logIncident("heartbeat", "heartbeat", "");
   }
 
   readRFID();
@@ -365,9 +492,15 @@ void loop()
 
   if (doorOpenDistance > 20)
   {
+    String distanceToDoor = String(doorOpenDistance);
     setLED(redLED, redLED_State, false);
     setLED(greenLED, greenLED_State, true);
     setLED(whiteLED, whiteLED_State, true);
+    if (millis() - lastUltrasonicTime >= 10000)
+    {
+      lastUltrasonicTime = millis();
+      logIncident("DoorOpen", "Door is open", distanceToDoor);
+    }
   }
   else
   {
