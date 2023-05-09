@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
 
@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css'],
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   alarmOn = false;
   notificationCount = 3;
   notifications = ['Notification 1', 'Notification 2', 'Notification 3'];
@@ -24,6 +24,10 @@ export class HomeComponent {
     private route: ActivatedRoute
   ) {
     this.token = this.route.snapshot.paramMap.get('token') || '';
+  }
+
+  ngOnInit() {
+    this.getLockState();
   }
 
   toggleAlarm() {
@@ -46,10 +50,18 @@ export class HomeComponent {
       ? 'http://localhost:3002/lock/open'
       : 'http://localhost:3002/lock/close';
     this.http.post(url, { time, lockId }, { headers }).subscribe((response) => {
+      console.log(response);
       console.log(time, lockId);
-      console.log(
-        'Lock ' + (this.alarmOn ? 'opened' : 'closed') + ' successfully.'
-      );
+    });
+  }
+
+  getLockState() {
+    const lockId = this.thisID;
+    const url = 'http://localhost:3002/lock/' + lockId + '/state';
+    this.http.get(url).subscribe(response => {
+      const responseObject = JSON.parse(JSON.stringify(response));
+      const doorLocked = responseObject.states.doorLocked;
+      this.alarmOn = doorLocked;
     });
   }
 

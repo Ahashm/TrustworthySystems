@@ -108,10 +108,14 @@ void setup()
   pinMode(whiteLED, OUTPUT);
   pinMode(greenLED, OUTPUT);
   // Initialize LED states
-  setLED(redLED, redLED_State, true);
-  setLED(blueLED, blueLED_State, false);
-  setLED(whiteLED, whiteLED_State, false);
-  setLED(greenLED, greenLED_State, false);
+  digitalWrite(redLED, HIGH);
+  digitalWrite(blueLED, LOW);
+  digitalWrite(whiteLED, LOW);
+  digitalWrite(greenLED, LOW);
+  redLED_State = "true";
+  blueLED_State = "false";
+  whiteLED_State = "false";
+  greenLED_State = "false";
   // Ultrasonic Sensor
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPin, INPUT);  // Sets the echoPin as an Input
@@ -161,6 +165,7 @@ void setup()
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   localTime();
+  heartbeat();
 }
 
 void publishMessageMQTT(const char* topic, const char* message)
@@ -338,8 +343,6 @@ void callback(char *topic, byte *payload, unsigned int length)
     } else {
       return;
     }
-  } else {
-    return;
   }
 }
 
@@ -518,12 +521,7 @@ void loop()
       logIncident("DoorOpen", "Door is open", distanceToDoor);
     }
   }
-  else
-  {
-    setLED(greenLED, greenLED_State, false);
-    setLED(whiteLED, whiteLED_State, false);
-    setLED(redLED, redLED_State, true);
-  }
+  
 
   client.loop();
 }
