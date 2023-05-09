@@ -47,8 +47,8 @@ export class HomeComponent implements OnInit {
     //http req
 
     const url = this.alarmOn
-      ? 'http://localhost:3002/lock/open'
-      : 'http://localhost:3002/lock/close';
+      ? 'http://localhost:3002/lock/close'
+      : 'http://localhost:3002/lock/open';
     this.http.post(url, { time, lockId }, { headers }).subscribe((response) => {
       console.log(response);
       console.log(time, lockId);

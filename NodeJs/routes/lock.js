@@ -58,7 +58,6 @@ function interactWithLock(req, message) {
   if (isAcceptable) {
     let formattedMessage = formatMessage(receivedDate, message);
     mqttClient.publish(lockId, formattedMessage);
-    sucess = true;
   }
 
   return isAcceptable;
@@ -66,6 +65,7 @@ function interactWithLock(req, message) {
 
 function isAcceptableTime(receivedDate) {
   let now = moment();
+  console.log(receivedDate.format("YYYY-MM-DD HH:mm:ss"));
   return receivedDate < now;
 }
 
