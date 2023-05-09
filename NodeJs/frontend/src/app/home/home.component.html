@@ -1,34 +1,67 @@
-<div class="container">
-  <h1 class="title">Smart Lock System</h1>
-  <div class="lock">
-    <div
-      class="lock-circle"
-      [ngClass]="{ on: alarmOn, off: !alarmOn }"
-      (click)="toggleAlarm()"
-    >
-      <i class="fa fa-lock" [ngClass]="{ open: !alarmOn, locked: alarmOn }"></i>
+<mat-tab-group mat-align-tabs="end">
+  <mat-tab label="Lock">
+    <div class="container">
+      <button mat-icon-button [matMenuTriggerFor]="menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">Logout</button>
+      </mat-menu>
+      <div class="username">Hello, {{ "myusername" }}</div>
+      <div class="lock">
+        <h1 class="title">Smart Door Lock <br /><br />Group AFK</h1>
+
+        <div
+          class="lock-circle"
+          [ngClass]="{ on: alarmOn, off: !alarmOn }"
+          (click)="toggleAlarm()"
+        >
+          <i
+            class="fa fa-lock"
+            [ngClass]="{ open: !alarmOn, locked: alarmOn }"
+          ></i>
+        </div>
+        <p class="status">{{ getAlarmText() }}</p>
+      </div>
     </div>
-    <p class="status">{{ getAlarmText() }}</p>
-  </div>
-  <div
-    class="notification-button"
-    (click)="showNotification = !showNotification"
-  >
-    <i class="fa fa-bell"></i>
-    <span class="badge">{{ notificationCount }}</span>
-  </div>
-  <div class="notification-list" [ngClass]="{ show: showNotification }">
-    <ul>
-      <li *ngFor="let notification of notifications">{{ notification }}</li>
-    </ul>
-  </div>
-  <div class="history-log">
-    <h2 class="subtitle">History Log</h2>
-    <ul>
-      <li *ngFor="let entry of historyLog">
-        <p>{{ entry.date | date : "medium" }}</p>
-        <p>{{ entry.event }}</p>
-      </li>
-    </ul>
-  </div>
-</div>
+  </mat-tab>
+
+  <mat-tab label="Notifications">
+    <div class="container">
+      <button mat-icon-button [matMenuTriggerFor]="menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">Logout</button>
+      </mat-menu>
+      <div class="notification-button">
+        <i class="fa fa-bell"></i>
+      </div>
+      <div class="notification-list" [ngClass]="{ show: showNotification }">
+        <ul>
+          <li *ngFor="let notification of notifications">{{ notification }}</li>
+        </ul>
+      </div>
+    </div>
+  </mat-tab>
+
+  <mat-tab label="History Log">
+    <div class="container">
+      <button mat-icon-button [matMenuTriggerFor]="menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">Logout</button>
+      </mat-menu>
+      <div class="history-log">
+        <h2 class="subtitle">History Log</h2>
+        <ul>
+          <li *ngFor="let entry of historyLog">
+            <p>{{ entry.date | date : "medium" }}</p>
+            <p>{{ entry.event }}</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </mat-tab>
+</mat-tab-group>
