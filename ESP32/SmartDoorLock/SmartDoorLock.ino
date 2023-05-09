@@ -42,7 +42,7 @@ const size_t bufferSize = JSON_OBJECT_SIZE(18);
 // const char *mqtt_broker = "192.168.52.129";
 //const char *mqtt_broker = "192.168.239.91";
 const char *mqtt_broker = "broker.hivemq.com";
-const char *topic = "/lock/321/actions";
+const char *topic = "lock/44215962539792/actions";
 const char *mqtt_username = "ahash";
 const char *mqtt_password = "ahash";
 //const int mqtt_port = 1885;
@@ -145,7 +145,7 @@ void setup()
     }
   }
   // publish and subscribe
-  client.publish(topic, "{\"System_Information\":{\"cpuFreq\":240,\"freeMem\":248316,\"heapSize\":327816,\"dateTime\":\"2023-05-05 11:38:59\"},\"Wifi_Information\":{\"ssid\":\"T14One\",\"signalStrength\":-46,\"ipAddress\":\"192.168.239.150\"},\"States\":{\"RFID\":\"false\",\"doorLocked\":\"false\",\"doorOpened\":\"true\",\"doorUnlocked\":\"true\"},\"Id\":44215962539792}");
+  client.publish(topic, "Connected from ESP32 - Nick Her");
   client.subscribe(topic);
 
   Serial.println(F("Initialize System"));
@@ -220,7 +220,7 @@ void logIncident(String origin, String typeOfIncident, String idOfCard) {
   } else if (origin = "default") {
     json["DoorOpenDistance"] = "NULL";
     json["RFID_id"] = "NULL";
-    json["origin"] = "DoorStateChange";
+    json["origin"] = "DoorStateChanged";
   } else if (origin = "heartbeat") {
     json["DoorOpenDistance"] = "NULL";
     json["RFID_id"] = "NULL";
@@ -231,21 +231,17 @@ void logIncident(String origin, String typeOfIncident, String idOfCard) {
   String jsonString;
   serializeJson(jsonDoc, jsonString);
   //serializeJsonPretty(jsonDoc, jsonString);
-  Serial.print(jsonString);
+  //Serial.print(jsonString);
   const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
-  Serial.println("HEARTBEAT SENDING");
-  delay(1000);
+  //Serial.println("HEARTBEAT SENDING");
   String espId = json["Id"].as<String>();
 
   String tempTopic = "lock/" + espId + "/events";
   const char *incidentTopic = tempTopic.c_str();
-  Serial.println(tempTopic);
-  Serial.println("HEARTBEAT SENT");
   publishMessageMQTT(incidentTopic, message);
-  delay(1000);
-  Serial.println("HEARTBEAT SENT");
+  Serial.println("Incident happend.");
 }
 
 
@@ -295,8 +291,10 @@ bool checkTimeElapsed(String currentESPTime, String serverTime) {
 
   // check if elapsed time is less than 10 seconds
   if (elapsedSeconds <= 10) {
+    Serial.println("Time is ok.");
     return true;
   } else {
+    Serial.println("Time is NOT ok.");
     return false;
   }
 }
@@ -315,15 +313,25 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println();
   Serial.println("-----------------------");
 
+  // Parse JSON string
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, payloadStr);
+
+  // Get message and date values
+  const char* message = doc["message"];
+  const char* date = doc["date"];
+
   String currentTime = localTime();
-  if (checkTimeElapsed(currentTime, payloadStr) == true) {
-    if (payloadStr == "unlock")
+  if (checkTimeElapsed(currentTime, date) == true) {
+    if (message = "unlock")
     {
+      Serial.println("unlock door hit");
       setLED(redLED, redLED_State, false);
       setLED(greenLED, greenLED_State, true);
       logIncident("Client", "Doorlock unlocked", "Client");
-    } else if (payloadStr == "lock")
+    } else if (message = "lock")
     {
+      Serial.println("lock door hit");
       setLED(greenLED, greenLED_State, false);
       setLED(redLED, redLED_State, true);
       logIncident("Client", "Doorlock locked", "Client");
@@ -355,7 +363,7 @@ float ultrasonicSensor()
   // distanceInch = distanceCm * CM_TO_INCH;
 
   // Prints the distance in the Serial Monitor
-  Serial.print("Distance (cm): ");
+  Serial.print("- Distance (cm): ");
   Serial.println(distanceCm);
 
   // Serial.print("Distance (inch): ");
@@ -468,11 +476,20 @@ void heartbeat()
   const char *message = jsonString.c_str();
 
   // Send heartbeat message to server
-  Serial.println("HEARTBEAT SENDING");
+  //Serial.println("HEARTBEAT SENDING");
+
+  String espId = json["Id"].as<String>();
+  String tempTopic = "lock/" + espId + "/heartbeats";
+  const char *incidentTopic = tempTopic.c_str();
+
   delay(1000);
-  publishMessageMQTT("locks/heartbeat", message);
-  delay(1000);
-  Serial.println("HEARTBEAT SENT");
+  publishMessageMQTT(incidentTopic, message);
+  Serial.println(tempTopic);
+  Serial.println("---- HEARTBEAT SENT ----");
+
+
+
+
 }
 
 void loop()
@@ -489,10 +506,9 @@ void loop()
   readRFID();
 
   int doorOpenDistance = ultrasonicSensor();
-
+  String distanceToDoor = String(doorOpenDistance);
   if (doorOpenDistance > 20)
   {
-    String distanceToDoor = String(doorOpenDistance);
     setLED(redLED, redLED_State, false);
     setLED(greenLED, greenLED_State, true);
     setLED(whiteLED, whiteLED_State, true);
