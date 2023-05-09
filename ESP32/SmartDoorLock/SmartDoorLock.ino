@@ -40,11 +40,13 @@ const size_t bufferSize = JSON_OBJECT_SIZE(18);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
-const char *mqtt_broker = "192.168.239.91";
+//const char *mqtt_broker = "192.168.239.91";
+const char *mqtt_broker = "broker.hivemq.com";
 const char *topic = "/lock/321/actions";
 const char *mqtt_username = "ahash";
 const char *mqtt_password = "ahash";
-const int mqtt_port = 1885;
+//const int mqtt_port = 1885;
+const int mqtt_port = 1883;
 
 // Auxiliar variables to store the current output state
 String redLED_State = "false";
@@ -84,20 +86,6 @@ const int echoPin = 12;
 long duration;
 float distanceCm;
 float distanceInch;
-
-void setLED(int pin, String &state, bool desiredState)
-{
-  if (desiredState)
-  {
-    digitalWrite(pin, HIGH);
-    state = "true";
-  }
-  else
-  {
-    digitalWrite(pin, LOW);
-    state = "false";
-  }
-}
 
 String localTime()
 {
@@ -199,6 +187,84 @@ void publishMessageMQTT(const char* topic, const char* message)
 
 }
 
+void logIncident(String origin, String typeOfIncident, String idOfCard) {
+  // Create JSON document
+  StaticJsonDocument<300> jsonDoc;
+  JsonObject json = jsonDoc.to<JsonObject>();
+  JsonObject ledStates = jsonDoc.createNestedObject("States");
+
+  // Get system information
+  json["Id"] = ESP.getEfuseMac();
+  json["TypeOfIncident"] = typeOfIncident;
+  String dateTime = localTime();
+  json["dateTime"] = dateTime;
+
+  // States
+  ledStates["RFID"] = blueLED_State;
+  ledStates["doorLocked"] = redLED_State;
+  ledStates["doorOpened"] = whiteLED_State;
+  ledStates["doorUnlocked"] = greenLED_State;
+
+  if (origin == "RFID") {
+    json["RFID_id"] = idOfCard;
+    json["origin"] == "RFID card used";
+    json["DoorOpenDistance"] = "NULL";
+  } else if (origin == "Client") {
+    json["RFID_id"] = "NULL";
+    json["origin"] = "Call from client";
+    json["DoorOpenDistance"] = "NULL";
+  } else if (origin == "DoorOpen") {
+    json["DoorOpenDistance"] = idOfCard;
+    json["RFID_id"] = "NULL";
+    json["origin"] = "Call from client";
+  } else if (origin = "default") {
+    json["DoorOpenDistance"] = "NULL";
+    json["RFID_id"] = "NULL";
+    json["origin"] = "DoorStateChange";
+  } else if (origin = "heartbeat") {
+    json["DoorOpenDistance"] = "NULL";
+    json["RFID_id"] = "NULL";
+    json["origin"] = "heartbeat sent";
+  }
+
+  // Serialize JSON document to string
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+  //serializeJsonPretty(jsonDoc, jsonString);
+  Serial.print(jsonString);
+  const char *message = jsonString.c_str();
+
+  // Send heartbeat message to server
+  Serial.println("HEARTBEAT SENDING");
+  delay(1000);
+  String espId = json["Id"].as<String>();
+
+  String tempTopic = "lock/" + espId + "/events";
+  const char *incidentTopic = tempTopic.c_str();
+  Serial.println(tempTopic);
+  Serial.println("HEARTBEAT SENT");
+  publishMessageMQTT(incidentTopic, message);
+  delay(1000);
+  Serial.println("HEARTBEAT SENT");
+}
+
+
+void setLED(int pin, String &state, bool desiredState)
+{
+  if (desiredState)
+  {
+    digitalWrite(pin, HIGH);
+    state = "true";
+  }
+  else
+  {
+    digitalWrite(pin, LOW);
+    state = "false";
+  }
+  logIncident("default", "Doorlock statechaned", "");
+}
+
+
 // function to convert timestamp string to time_t
 time_t parseTimestamp(String timestamp) {
   int year, month, day, hour, minute, second;
@@ -255,10 +321,12 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
       setLED(redLED, redLED_State, false);
       setLED(greenLED, greenLED_State, true);
+      logIncident("Client", "Doorlock unlocked", "Client");
     } else if (payloadStr == "lock")
     {
       setLED(greenLED, greenLED_State, false);
       setLED(redLED, redLED_State, true);
+      logIncident("Client", "Doorlock locked", "Client");
     } else {
       return;
     }
@@ -317,7 +385,11 @@ void readRFID(void)
   }
   Serial.print(F("RFID In dec: "));
   printDec(rfid.uid.uidByte, rfid.uid.size);
-
+  String rfid_idCode = "";
+  for (int i = 0; i < rfid.uid.size; i++) {
+    rfid_idCode += String(rfid.uid.uidByte[i], HEX);
+  }
+  logIncident("RFID", "RFID tag used", rfid_idCode);
   // Blue light
   setLED(blueLED, blueLED_State, true);
   setLED(redLED, redLED_State, false);
@@ -330,18 +402,12 @@ void readRFID(void)
   setLED(blueLED, blueLED_State, false);
   setLED(redLED, redLED_State, true);
   setLED(greenLED, greenLED_State, false);
+  logIncident("RFID", "RFID tag used", rfid_idCode);
   Serial.println();
   // Halt PICC
   rfid.PICC_HaltA();
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
-
-  // Serialize JSON document to string
-  String messageString = "Nicker";
-  const char *message = messageString.c_str();
-
-  // Send heartbeat message to server
-  publishMessageMQTT("/lock/321/actions", message);
 }
 /**
     Helper routine to dump a byte array as hex values to Serial.
@@ -404,7 +470,7 @@ void heartbeat()
   // Send heartbeat message to server
   Serial.println("HEARTBEAT SENDING");
   delay(1000);
-  publishMessageMQTT("/lock/321/actions", message);
+  publishMessageMQTT("locks/heartbeat", message);
   delay(1000);
   Serial.println("HEARTBEAT SENT");
 }
@@ -412,10 +478,12 @@ void heartbeat()
 void loop()
 {
   static unsigned long lastHeartbeatTime = 0;
+  static unsigned long lastUltrasonicTime = 0;
   if (millis() - lastHeartbeatTime >= 60000)
   {
     lastHeartbeatTime = millis();
     heartbeat();
+    logIncident("heartbeat", "heartbeat", "");
   }
 
   readRFID();
@@ -424,9 +492,15 @@ void loop()
 
   if (doorOpenDistance > 20)
   {
+    String distanceToDoor = String(doorOpenDistance);
     setLED(redLED, redLED_State, false);
     setLED(greenLED, greenLED_State, true);
     setLED(whiteLED, whiteLED_State, true);
+    if (millis() - lastUltrasonicTime >= 10000)
+    {
+      lastUltrasonicTime = millis();
+      logIncident("DoorOpen", "Door is open", distanceToDoor);
+    }
   }
   else
   {
