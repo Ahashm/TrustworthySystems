@@ -327,14 +327,15 @@ void callback(char *topic, byte *payload, unsigned int length)
   const char* date = doc["date"];
 
   String currentTime = localTime();
+  Serial.println("");
   if (checkTimeElapsed(currentTime, date) == true) {
-    if (message = "unlock")
+    if (strcmp(message, "unlock") == 0)
     {
       Serial.println("unlock door hit");
       setLED(redLED, redLED_State, false);
       setLED(greenLED, greenLED_State, true);
       logIncident("Client", "Doorlock unlocked", "Client");
-    } else if (message = "lock")
+    } else if (strcmp(message, "lock") == 0)
     {
       Serial.println("lock door hit");
       setLED(greenLED, greenLED_State, false);
@@ -367,11 +368,10 @@ float ultrasonicSensor()
 
   // Prints the distance in the Serial Monitor
   Serial.print("- Distance (cm): ");
-  Serial.println(distanceCm);
+  //Serial.println(distanceCm);
 
   // Serial.print("Distance (inch): ");
   // Serial.println(distanceInch);
-
   delay(1000);
   return distanceCm;
 }
@@ -489,10 +489,6 @@ void heartbeat()
   publishMessageMQTT(incidentTopic, message);
   Serial.println(tempTopic);
   Serial.println("---- HEARTBEAT SENT ----");
-
-
-
-
 }
 
 void loop()
@@ -507,21 +503,26 @@ void loop()
   }
 
   readRFID();
-
   int doorOpenDistance = ultrasonicSensor();
   String distanceToDoor = String(doorOpenDistance);
-  if (doorOpenDistance > 20)
+
+  if (doorOpenDistance >= 20)
   {
-    setLED(redLED, redLED_State, false);
-    setLED(greenLED, greenLED_State, true);
-    setLED(whiteLED, whiteLED_State, true);
     if (millis() - lastUltrasonicTime >= 10000)
     {
       lastUltrasonicTime = millis();
+      setLED(whiteLED, whiteLED_State, true);
       logIncident("DoorOpen", "Door is open", distanceToDoor);
     }
+  } else if (doorOpenDistance < 20) {
+    if (millis() - lastUltrasonicTime >= 10000)
+    {
+      lastUltrasonicTime = millis();
+      setLED(whiteLED, whiteLED_State, false);
+      logIncident("DoorOpen", "Door is closed", distanceToDoor);
+    }
   }
-  
 
   client.loop();
+
 }
