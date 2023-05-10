@@ -11,7 +11,11 @@ import { Router } from '@angular/router';
 export class HomeComponent implements OnInit {
   alarmOn = false;
   notificationCount = 3;
-  notifications = ['Notification 1', 'Notification 2', 'Notification 3'];
+  notifications = [
+    'Server connection lost',
+    'Lock state time exceeded',
+    'Server connection lost',
+  ];
   showNotification = true;
   historyLog: { date: Date; event: string; id: string }[] = [];
   thisID: string = '44215962539792';
@@ -58,7 +62,7 @@ export class HomeComponent implements OnInit {
   getLockState() {
     const lockId = this.thisID;
     const url = 'http://localhost:3002/lock/' + lockId + '/state';
-    this.http.get(url).subscribe(response => {
+    this.http.get(url).subscribe((response) => {
       const responseObject = JSON.parse(JSON.stringify(response));
       const doorLocked = responseObject.states.doorLocked;
       this.alarmOn = doorLocked;
