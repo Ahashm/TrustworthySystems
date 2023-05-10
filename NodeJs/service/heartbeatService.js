@@ -7,7 +7,7 @@ exports.registerOnline = (id) => {
 
     let client = clients[id];
     clearTimeout(client.deadline);
-    setNextDeadline(client);
+    setNextDeadline(id);
     console.log(`Heartbeat received for id: ${id}`);
 }
 
@@ -18,19 +18,18 @@ exports.isOnline = (id) => {
 }
 
 function addElement(id) {
-    let client = {};
+    let client = { id: id };
     clients[id] = client;
 }
 
 function setNextDeadline(client) {
     client.deadline = setTimeout(() => {
-        let id = client.heartbeat.id;
+        let id = client.id;
         delete clients[id];
-        lostConnections[id] = client.heartbeat;
         console.log(`Lost connection to id: ${id}`);
     }, 90000, client)
 }
 
-function containsId(id){
+function containsId(id) {
     return clients[id] != undefined;
 }

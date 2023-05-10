@@ -11,17 +11,16 @@ const heartbeatService = require('../service/heartbeatService')
 
 router.post("/open", verifyToken, function (req, res) {
   let errorMsg = interactWithLock(req, "unlock");
-  let isSuccess = errorMsg == null;
+  let isSuccess = errorMsg == undefined;
 
-  let message = isSuccess ? "Published message" : errorMsg;
+  let message = isSuccess ? "Published message" : "errorMsg";
   res.json({ success: isSuccess, message: message });
 });
 
 router.post("/close", verifyToken, function (req, res) {
   let errorMsg = interactWithLock(req, "lock");
-  let isSuccess = errorMsg == null;
-
-  let message = isSuccess ? "Published message" : errorMsg;
+  let isSuccess = errorMsg == undefined;
+  let message = isSuccess ? "Published message" : "errorMsg";
   res.json({ success: isSuccess, message: message });
 });
 
