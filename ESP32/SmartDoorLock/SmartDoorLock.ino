@@ -506,7 +506,7 @@ void loop()
   int doorOpenDistance = ultrasonicSensor();
   String distanceToDoor = String(doorOpenDistance);
 
-  if (doorOpenDistance >= 20)
+  if (doorOpenDistance >= 2)
   {
     if (millis() - lastUltrasonicTime >= 10000)
     {
@@ -514,7 +514,7 @@ void loop()
       setLED(whiteLED, whiteLED_State, true);
       logIncident("DoorOpen", "Door is open", distanceToDoor);
     }
-  } else if (doorOpenDistance < 20) {
+  } else if (doorOpenDistance < 2) {
     if (millis() - lastUltrasonicTime >= 10000)
     {
       lastUltrasonicTime = millis();
