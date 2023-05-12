@@ -639,11 +639,19 @@ system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTa
     </system>
 	<queries>
 		<query>
-			<formula>// Verify that no deadlocks </formula>
+			<formula>// Verify no deadlocks within all combinations of 15 messages</formula>
 			<comment></comment>
 		</query>
 		<query>
 			<formula>A[] Broker.receivedMessages &lt; 15 imply  not deadlock</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>// Verify that deciding the door state will lead to the door being open, if the lock is currently locked and less than 10 seconds have elapsed</formula>
 			<comment></comment>
 		</query>
 		<query>
@@ -660,6 +668,10 @@ system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTa
 		</query>
 		<query>
 			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>// Verify that business centric states are reachable</formula>
 			<comment></comment>
 		</query>
 		<query>
