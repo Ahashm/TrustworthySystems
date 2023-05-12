@@ -422,19 +422,30 @@ void readRFID(void)
     rfid_idCode += String(rfid.uid.uidByte[i], HEX);
   }
   logIncident("RFID", "RFID tag used", rfid_idCode);
-  // Blue light
-  setLED(blueLED, blueLED_State, true);
-  setLED(redLED, redLED_State, false);
-  setLED(greenLED, greenLED_State, true);
-  auto start_time = std::chrono::system_clock::now();
-  while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 3)
-  {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  if (redLED_State == "true") {
+    setLED(redLED, redLED_State, false);
+    setLED(greenLED, greenLED_State, true);
+    setLED(blueLED, blueLED_State, true);
+    auto start_time = std::chrono::system_clock::now();
+    while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 5)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    setLED(blueLED, blueLED_State, false);
+    logIncident("RFID", "RFID tag used", rfid_idCode);
+  } else if (redLED_State == "false") {
+    setLED(redLED, redLED_State, true);
+    setLED(greenLED, greenLED_State, false);
+    setLED(blueLED, blueLED_State, true);
+    auto start_time = std::chrono::system_clock::now();
+    while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_time).count() < 5)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    setLED(blueLED, blueLED_State, false);
+    logIncident("RFID", "RFID tag used", rfid_idCode);
   }
-  setLED(blueLED, blueLED_State, false);
-  setLED(redLED, redLED_State, true);
-  setLED(greenLED, greenLED_State, false);
-  logIncident("RFID", "RFID tag used", rfid_idCode);
   Serial.println();
   // Halt PICC
   rfid.PICC_HaltA();
@@ -520,16 +531,16 @@ void loop()
   int doorOpenDistance = ultrasonicSensor();
   String distanceToDoor = String(doorOpenDistance);
 
-  if (doorOpenDistance >= 2)
+  if (doorOpenDistance >= 20)
   {
-    if (millis() - lastUltrasonicTime >= 10000)
+    if (millis() - lastUltrasonicTime >= 500)
     {
       lastUltrasonicTime = millis();
       setLED(whiteLED, whiteLED_State, true);
       logIncident("DoorOpen", "Door is open", distanceToDoor);
     }
-  } else if (doorOpenDistance < 2) {
-    if (millis() - lastUltrasonicTime >= 10000)
+  } else if (doorOpenDistance < 20) {
+    if (millis() - lastUltrasonicTime >= 500)
     {
       lastUltrasonicTime = millis();
       setLED(whiteLED, whiteLED_State, false);

@@ -7,7 +7,7 @@ const eventModel = require('../models/events');
 let client = null;
 //const host = 'broker.hivemq.com'
 //const porti = '1883'
-const host = '192.168.138.91'
+const host = '192.168.239.91'
 const porti = '1885'
 
 const lockTopicPath = "lock/+/"
