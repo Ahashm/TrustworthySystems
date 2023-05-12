@@ -5,14 +5,14 @@
 chan request;
 bool reqOpen;
 
-const int channels = 3;
+const int channels = 4;
 int[0, channels] topic = 0;
 broadcast chan publish[channels];
 chan enqueuePublishMessage[channels];
 urgent chan ack[channels];
 urgent chan processMsg[channels];
 urgent chan initiatePublish, rfid_tag;
-chan success, failed;
+broadcast chan success, failed;
 chan heartbeat, mqtt_command_received, mqtt_command_send, closeDoor, openDoor;
 int ready, doorState;
 
@@ -168,12 +168,12 @@ int open = 0;</declaration>
 		<transition>
 			<source ref="id6"/>
 			<target ref="id5"/>
-			<label kind="synchronisation" x="-34" y="-127">success?</label>
+			<label kind="synchronisation" x="-68" y="-110">success?</label>
 		</transition>
 	</template>
 	<template>
 		<name>Server</name>
-		<parameter>int topicChannel, int subscribeTopic</parameter>
+		<parameter>int topicChannel, int subscribeTopic, int failedMessage</parameter>
 		<declaration>bool req;
 </declaration>
 		<location id="id12" x="-450" y="-238">
@@ -189,7 +189,27 @@ int open = 0;</declaration>
 			<name x="-663" y="-416">SuccessfulMsg</name>
 			<committed/>
 		</location>
+		<location id="id16" x="-450" y="-110">
+			<name x="-552" y="-136">FailedMessage</name>
+			<committed/>
+		</location>
 		<init ref="id12"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-595" y="-459">processMsg[subscribeTopic]?</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-408" y="-204">failed!</label>
+			<nail x="-348" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-561" y="-170">publish[failedMessage]?</label>
+		</transition>
 		<transition>
 			<source ref="id12"/>
 			<target ref="id15"/>
@@ -213,12 +233,6 @@ int open = 0;</declaration>
 			<target ref="id12"/>
 			<label kind="synchronisation" x="-526" y="-327">success!</label>
 		</transition>
-		<transition>
-			<source ref="id14"/>
-			<target ref="id15"/>
-			<label kind="synchronisation" x="-646" y="-518">processMsg[subscribeTopic]?</label>
-			<nail x="-493" y="-493"/>
-		</transition>
 	</template>
 	<template>
 		<name x="5" y="5">Broker</name>
@@ -229,38 +243,38 @@ clock receivedMsg;
 int list[11];
 
 int receivedMessages = 0;</declaration>
-		<location id="id16" x="161" y="-85">
+		<location id="id17" x="161" y="-85">
 			<name x="151" y="-119">Listening</name>
 		</location>
-		<location id="id17" x="450" y="-85">
+		<location id="id18" x="450" y="-85">
 			<name x="416" y="-119">InitiatePublish</name>
 			<committed/>
 		</location>
-		<location id="id18" x="450" y="119">
+		<location id="id19" x="450" y="119">
 			<name x="459" y="85">Publish</name>
 		</location>
-		<location id="id19" x="306" y="17">
+		<location id="id20" x="306" y="17">
 			<name x="315" y="-17">Reset</name>
 			<committed/>
 		</location>
-		<init ref="id16"/>
+		<init ref="id17"/>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id17"/>
+		</transition>
 		<transition>
 			<source ref="id19"/>
-			<target ref="id16"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="280" y="68">enqueuePublishMessage[publishChan]!</label>
 		</transition>
 		<transition>
 			<source ref="id18"/>
 			<target ref="id19"/>
-			<label kind="synchronisation" x="280" y="68">enqueuePublishMessage[publishChan]!</label>
+			<label kind="assignment" x="442" y="18">publishChan = topic</label>
 		</transition>
 		<transition>
 			<source ref="id17"/>
 			<target ref="id18"/>
-			<label kind="assignment" x="442" y="18">publishChan = topic</label>
-		</transition>
-		<transition>
-			<source ref="id16"/>
-			<target ref="id17"/>
 			<label kind="guard" x="229" y="-119">receivedMessages &lt; 15</label>
 			<label kind="synchronisation" x="204" y="-102">initiatePublish?</label>
 			<label kind="assignment" x="238" y="-85">receivedMessages+= 1</label>
@@ -306,29 +320,29 @@ int tail()
 {
    return list[len - 1];
 }</declaration>
-		<location id="id20" x="-1130" y="-1402">
+		<location id="id21" x="-1130" y="-1402">
 			<name x="-1140" y="-1436">Checking</name>
 			<label kind="invariant" x="-1181" y="-1453">len == 0 or committed &lt; 1</label>
 		</location>
-		<location id="id21" x="-883" y="-1249">
+		<location id="id22" x="-883" y="-1249">
 			<name x="-994" y="-1300">AwaitResponse</name>
 			<label kind="invariant" x="-917" y="-1207">resend &lt;= 2</label>
 		</location>
-		<location id="id22" x="-1130" y="-1249">
+		<location id="id23" x="-1130" y="-1249">
 			<name x="-1140" y="-1283">Sent</name>
 			<committed/>
 		</location>
-		<init ref="id20"/>
+		<init ref="id21"/>
 		<transition>
-			<source ref="id20"/>
-			<target ref="id21"/>
+			<source ref="id21"/>
+			<target ref="id22"/>
 			<label kind="guard" x="-1028" y="-1419">len &gt; 0</label>
 			<label kind="assignment" x="-883" y="-1394">resend = 0</label>
 			<nail x="-883" y="-1402"/>
 		</transition>
 		<transition>
-			<source ref="id21"/>
-			<target ref="id21"/>
+			<source ref="id22"/>
+			<target ref="id22"/>
 			<label kind="guard" x="-865" y="-1304">len &lt; channels</label>
 			<label kind="synchronisation" x="-739" y="-1283">enqueuePublishMessage[topic]?</label>
 			<label kind="assignment" x="-739" y="-1266">enqueue(topic)</label>
@@ -336,8 +350,8 @@ int tail()
 			<nail x="-747" y="-1215"/>
 		</transition>
 		<transition>
-			<source ref="id21"/>
-			<target ref="id21"/>
+			<source ref="id22"/>
+			<target ref="id22"/>
 			<label kind="guard" x="-865" y="-1228">len &lt;= channels</label>
 			<label kind="synchronisation" x="-926" y="-1139">publish[front()]!</label>
 			<label kind="assignment" x="-909" y="-1122">resend = 0</label>
@@ -345,19 +359,19 @@ int tail()
 			<nail x="-968" y="-1139"/>
 		</transition>
 		<transition>
-			<source ref="id22"/>
-			<target ref="id20"/>
+			<source ref="id23"/>
+			<target ref="id21"/>
 			<label kind="assignment" x="-1130" y="-1325">dequeue(),
 committed = 0</label>
 		</transition>
 		<transition>
-			<source ref="id21"/>
-			<target ref="id22"/>
+			<source ref="id22"/>
+			<target ref="id23"/>
 			<label kind="synchronisation" x="-1062" y="-1266">ack[front()]?</label>
 		</transition>
 		<transition>
-			<source ref="id20"/>
-			<target ref="id21"/>
+			<source ref="id21"/>
+			<target ref="id22"/>
 			<label kind="guard" x="-1096" y="-1394">len == 0</label>
 			<label kind="synchronisation" x="-1070" y="-1385">enqueuePublishMessage[topic]?</label>
 			<label kind="assignment" x="-1045" y="-1368">enqueue(topic),
@@ -370,211 +384,217 @@ resend = 0</label>
 		<declaration>
 int messages = 0;
 clock timeToProcess, wait;</declaration>
-		<location id="id23" x="-289" y="-416">
+		<location id="id24" x="-289" y="-416">
 			<name x="-299" y="-450">Idle</name>
 		</location>
-		<location id="id24" x="-204" y="-306">
+		<location id="id25" x="-204" y="-306">
 		</location>
-		<location id="id25" x="-365" y="-306">
+		<location id="id26" x="-365" y="-306">
 			<committed/>
 		</location>
-		<location id="id26" x="-289" y="-552">
+		<location id="id27" x="-289" y="-552">
+			<name x="-299" y="-586">ProcessMessage</name>
 			<committed/>
 		</location>
-		<init ref="id23"/>
+		<init ref="id24"/>
 		<transition>
-			<source ref="id26"/>
-			<target ref="id23"/>
+			<source ref="id27"/>
+			<target ref="id24"/>
 			<label kind="assignment" x="-271" y="-518">messages-=1</label>
 			<nail x="-204" y="-484"/>
 		</transition>
 		<transition>
-			<source ref="id23"/>
-			<target ref="id26"/>
+			<source ref="id24"/>
+			<target ref="id27"/>
 			<label kind="guard" x="-442" y="-476">messages&gt;0</label>
 			<label kind="synchronisation" x="-501" y="-518">processMsg[subscribeTopic]!</label>
 			<nail x="-374" y="-484"/>
 		</transition>
 		<transition>
-			<source ref="id25"/>
-			<target ref="id23"/>
+			<source ref="id26"/>
+			<target ref="id24"/>
 			<label kind="assignment" x="-416" y="-374">messages+=1,
 wait = 0</label>
 		</transition>
 		<transition>
-			<source ref="id24"/>
-			<target ref="id25"/>
+			<source ref="id25"/>
+			<target ref="id26"/>
 			<label kind="synchronisation" x="-347" y="-323">ack[subscribeTopic]!</label>
 		</transition>
 		<transition>
-			<source ref="id23"/>
-			<target ref="id24"/>
+			<source ref="id24"/>
+			<target ref="id25"/>
 			<label kind="synchronisation" x="-255" y="-391">publish[subscribeTopic]?</label>
 			<label kind="assignment" x="-238" y="-365">timeToProcess = 0</label>
 		</transition>
 	</template>
 	<template>
 		<name x="5" y="5">esp32</name>
-		<parameter>int topicChannel, int subscribeTopic</parameter>
+		<parameter>int topicChannel, int subscribeTopic, int failedAttempt</parameter>
 		<declaration>// Place local declarations here.
 clock time;
-bool wifiConnected=true, doorOpened;</declaration>
-		<location id="id27" x="561" y="-17">
+bool wifiConnected=true, doorOpened;
+
+int result = 0;</declaration>
+		<location id="id28" x="561" y="-17">
 			<name x="551" y="-51">On</name>
 		</location>
-		<location id="id28" x="816" y="59">
+		<location id="id29" x="816" y="59">
 			<name x="833" y="51">Connected</name>
 			<committed/>
 		</location>
-		<location id="id29" x="901" y="144">
+		<location id="id30" x="901" y="144">
 			<name x="799" y="119">MQTT_sending</name>
 		</location>
-		<location id="id30" x="306" y="331">
+		<location id="id31" x="306" y="331">
 			<name x="187" y="322">MQTT_receiving</name>
 			<committed/>
 		</location>
-		<location id="id31" x="561" y="144">
+		<location id="id32" x="561" y="144">
 			<name x="570" y="119">Idle</name>
 		</location>
-		<location id="id32" x="306" y="561">
+		<location id="id33" x="306" y="561">
 			<name x="212" y="552">UnlockDoor</name>
 			<committed/>
 		</location>
-		<location id="id33" x="306" y="59">
+		<location id="id34" x="306" y="59">
 			<name x="221" y="51">Disconnect</name>
 		</location>
-		<location id="id34" x="561" y="561">
+		<location id="id35" x="561" y="561">
 			<name x="586" y="552">LockDoor</name>
 			<committed/>
 		</location>
-		<location id="id35" x="816" y="331">
+		<location id="id36" x="816" y="331">
 			<name x="833" y="322">RFID</name>
 			<committed/>
 		</location>
-		<location id="id36" x="561" y="331">
+		<location id="id37" x="561" y="331">
 			<name x="527" y="297">DoorState</name>
 			<urgent/>
 		</location>
-		<location id="id37" x="816" y="561">
+		<location id="id38" x="816" y="561">
 			<name x="773" y="578">LateMessage</name>
 			<committed/>
 		</location>
-		<init ref="id27"/>
+		<init ref="id28"/>
 		<transition>
-			<source ref="id28"/>
-			<target ref="id31"/>
+			<source ref="id29"/>
+			<target ref="id32"/>
 			<label kind="assignment" x="613" y="59">ready=1</label>
 			<nail x="595" y="59"/>
 		</transition>
 		<transition>
-			<source ref="id34"/>
-			<target ref="id29"/>
+			<source ref="id35"/>
+			<target ref="id30"/>
+			<label kind="assignment" x="579" y="612">result = topicChannel</label>
 			<nail x="561" y="612"/>
 			<nail x="960" y="612"/>
 			<nail x="960" y="144"/>
 		</transition>
 		<transition>
-			<source ref="id32"/>
-			<target ref="id29"/>
+			<source ref="id33"/>
+			<target ref="id30"/>
+			<label kind="assignment" x="324" y="646">result = topicChannel</label>
 			<nail x="306" y="646"/>
 			<nail x="1003" y="646"/>
 			<nail x="1003" y="102"/>
 			<nail x="901" y="102"/>
 		</transition>
 		<transition>
-			<source ref="id36"/>
-			<target ref="id34"/>
+			<source ref="id37"/>
+			<target ref="id35"/>
 			<label kind="guard" x="569" y="450">doorState==1</label>
 			<label kind="synchronisation" x="569" y="484">closeDoor!</label>
 		</transition>
 		<transition>
-			<source ref="id37"/>
-			<target ref="id29"/>
+			<source ref="id38"/>
+			<target ref="id30"/>
+			<label kind="assignment" x="834" y="561">result= failedAttempt</label>
 			<nail x="901" y="561"/>
 		</transition>
 		<transition>
-			<source ref="id36"/>
-			<target ref="id37"/>
+			<source ref="id37"/>
+			<target ref="id38"/>
 			<label kind="guard" x="612" y="374">doorState==0 &amp;&amp; timeElapsed&gt;10</label>
 			<nail x="603" y="399"/>
 			<nail x="816" y="399"/>
 		</transition>
 		<transition>
-			<source ref="id29"/>
-			<target ref="id31"/>
+			<source ref="id30"/>
+			<target ref="id32"/>
 			<label kind="synchronisation" x="629" y="119">initiatePublish!</label>
-			<label kind="assignment" x="629" y="144">topic = topicChannel</label>
+			<label kind="assignment" x="629" y="144">topic = result</label>
 		</transition>
 		<transition>
-			<source ref="id31"/>
-			<target ref="id33"/>
+			<source ref="id32"/>
+			<target ref="id34"/>
 			<label kind="guard" x="365" y="34">wifiConnected==false</label>
 			<nail x="518" y="59"/>
 		</transition>
 		<transition>
-			<source ref="id31"/>
-			<target ref="id35"/>
+			<source ref="id32"/>
+			<target ref="id36"/>
 			<label kind="synchronisation" x="679" y="203">rfid_tag?</label>
 			<nail x="594" y="229"/>
 			<nail x="816" y="229"/>
 		</transition>
 		<transition>
-			<source ref="id31"/>
-			<target ref="id30"/>
+			<source ref="id32"/>
+			<target ref="id31"/>
 			<label kind="guard" x="331" y="187">wifiConnected==true</label>
 			<label kind="synchronisation" x="331" y="203">processMsg[subscribeTopic]?</label>
 			<nail x="518" y="229"/>
 			<nail x="306" y="229"/>
 		</transition>
 		<transition>
-			<source ref="id36"/>
-			<target ref="id32"/>
+			<source ref="id37"/>
+			<target ref="id33"/>
 			<label kind="guard" x="297" y="374">doorState==0 &amp;&amp; timeElapsed&lt;=10</label>
 			<label kind="synchronisation" x="382" y="399">openDoor!</label>
 			<nail x="518" y="399"/>
 			<nail x="306" y="399"/>
 		</transition>
 		<transition>
-			<source ref="id35"/>
-			<target ref="id36"/>
+			<source ref="id36"/>
+			<target ref="id37"/>
 			<label kind="assignment" x="579" y="331">timeElapsed = 0</label>
 		</transition>
 		<transition>
-			<source ref="id30"/>
-			<target ref="id36"/>
+			<source ref="id31"/>
+			<target ref="id37"/>
 		</transition>
 		<transition>
-			<source ref="id27"/>
-			<target ref="id28"/>
+			<source ref="id28"/>
+			<target ref="id29"/>
 			<label kind="guard" x="603" y="-42">wifiConnected==true</label>
 			<nail x="816" y="-17"/>
 		</transition>
 		<transition>
-			<source ref="id27"/>
-			<target ref="id33"/>
+			<source ref="id28"/>
+			<target ref="id34"/>
 			<label kind="guard" x="382" y="-42">wifiConnected==false</label>
 			<nail x="306" y="-17"/>
 		</transition>
 	</template>
 	<template>
 		<name>rfidTag</name>
-		<location id="id38" x="-238" y="-85">
+		<location id="id39" x="-238" y="-85">
 			<name x="-280" y="-93">Idle</name>
 		</location>
-		<location id="id39" x="-59" y="-85">
+		<location id="id40" x="-59" y="-85">
 			<name x="-42" y="-93">UnlockDoor</name>
 		</location>
-		<init ref="id38"/>
+		<init ref="id39"/>
 		<transition>
-			<source ref="id39"/>
-			<target ref="id38"/>
+			<source ref="id40"/>
+			<target ref="id39"/>
 			<label kind="synchronisation" x="-170" y="-42">rfid_tag!</label>
 			<nail x="-59" y="-17"/>
 			<nail x="-238" y="-17"/>
 		</transition>
 		<transition>
-			<source ref="id38"/>
-			<target ref="id39"/>
+			<source ref="id39"/>
+			<target ref="id40"/>
 			<label kind="synchronisation" x="-220" y="-161">commandManually?</label>
 			<nail x="-238" y="-144"/>
 			<nail x="-59" y="-144"/>
@@ -583,24 +603,24 @@ bool wifiConnected=true, doorOpened;</declaration>
 	<template>
 		<name>Doorlock</name>
 		<declaration>clock maxTime;</declaration>
-		<location id="id40" x="59" y="-136">
+		<location id="id41" x="59" y="-136">
 			<name x="76" y="-144">Unlocked</name>
 		</location>
-		<location id="id41" x="-178" y="-136">
+		<location id="id42" x="-178" y="-136">
 			<name x="-237" y="-144">Locked</name>
 		</location>
-		<init ref="id41"/>
+		<init ref="id42"/>
 		<transition>
-			<source ref="id40"/>
-			<target ref="id41"/>
+			<source ref="id41"/>
+			<target ref="id42"/>
 			<label kind="synchronisation" x="-93" y="-102">closeDoor?</label>
 			<label kind="assignment" x="-93" y="-85">doorState=0</label>
 			<nail x="59" y="-60"/>
 			<nail x="-178" y="-60"/>
 		</transition>
 		<transition>
-			<source ref="id41"/>
-			<target ref="id40"/>
+			<source ref="id42"/>
+			<target ref="id41"/>
 			<label kind="synchronisation" x="-93" y="-212">openDoor?</label>
 			<label kind="assignment" x="-93" y="-195">doorState=1</label>
 			<nail x="-178" y="-212"/>
@@ -610,13 +630,18 @@ bool wifiConnected=true, doorOpened;</declaration>
 	<system>// Place template instantiations here.
 MqttClientEsp = MqttClient(1);
 MqttClientServer = MqttClient(2);
-Server1 = Server(1, 2);
-Esp = esp32(2,1);
+MqttFailedMessageClient = MqttClient(3);
+Server1 = Server(1, 2, 3);
+Esp = esp32(2,1,3);
 
 // List one or more processes to be composed into a system.
-system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTag, Server1, Client, User;
+system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTag, Server1, Client, User, MqttFailedMessageClient;
     </system>
 	<queries>
+		<query>
+			<formula>// Verify that no deadlocks </formula>
+			<comment></comment>
+		</query>
 		<query>
 			<formula>A[] Broker.receivedMessages &lt; 15 imply  not deadlock</formula>
 			<comment></comment>
@@ -642,6 +667,10 @@ system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTa
 			<comment></comment>
 		</query>
 		<query>
+			<formula>E&lt;&gt; MqttClientServer.ProcessMessage</formula>
+			<comment></comment>
+		</query>
+		<query>
 			<formula>E&lt;&gt; Esp.DoorState and timeElapsed &lt; 10</formula>
 			<comment></comment>
 		</query>
@@ -663,6 +692,10 @@ system Broker, BrokerQos, MqttClientEsp, MqttClientServer, Esp, Doorlock, rfidTa
 		</query>
 		<query>
 			<formula>E&lt;&gt; Doorlock.Unlocked</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Server1.FailedMessage</formula>
 			<comment></comment>
 		</query>
 	</queries>
