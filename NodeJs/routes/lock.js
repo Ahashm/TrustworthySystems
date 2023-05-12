@@ -12,15 +12,14 @@ const heartbeatService = require('../service/heartbeatService')
 router.post("/open", verifyToken, function (req, res) {
   let errorMsg = interactWithLock(req, "unlock");
   let isSuccess = errorMsg == undefined;
-
-  let message = isSuccess ? "Published message" : "errorMsg";
+  let message = isSuccess ? "Published message" : errorMsg;
   res.json({ success: isSuccess, message: message });
 });
 
 router.post("/close", verifyToken, function (req, res) {
   let errorMsg = interactWithLock(req, "lock");
   let isSuccess = errorMsg == undefined;
-  let message = isSuccess ? "Published message" : "errorMsg";
+  let message = isSuccess ? "Published message" : errorMsg;
   res.json({ success: isSuccess, message: message });
 });
 
@@ -54,12 +53,17 @@ function interactWithLock(req, message) {
   let { lockId, time } = req.body;
   let receivedDate = moment(time);
   let isAcceptable = isAcceptableTime(receivedDate);
-  if (isAcceptable) {
-    let formattedMessage = formatMessage(receivedDate, message);
-    mqttClient.publish(lockId, formattedMessage);
+  if (!isAcceptable) {
+    return "Unusable date, please try again";
   }
 
-  return isAcceptable;
+  let isOnline = heartbeatService.isOnline(lockId);
+  if(!isOnline){
+    return "The lock is currently offline, please try again later, or use your key";
+  }
+  
+  let formattedMessage = formatMessage(receivedDate, message);
+  mqttClient.publish(lockId, formattedMessage);
 }
 
 function isAcceptableTime(receivedDate) {
