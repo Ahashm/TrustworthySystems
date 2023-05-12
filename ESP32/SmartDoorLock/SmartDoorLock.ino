@@ -40,13 +40,14 @@ const size_t bufferSize = JSON_OBJECT_SIZE(18);
 
 // MQTT Broker
 // const char *mqtt_broker = "192.168.52.129";
-//const char *mqtt_broker = "192.168.239.91";
-const char *mqtt_broker = "broker.hivemq.com";
+const char *mqtt_broker = "192.168.239.91";
+//const char *mqtt_broker = "broker.hivemq.com";
 const char *topic = "lock/44215962539792/actions";
+const char *heartbeatTopic = "heartbeats";
 const char *mqtt_username = "ahash";
 const char *mqtt_password = "ahash";
-//const int mqtt_port = 1885;
-const int mqtt_port = 1883;
+const int mqtt_port = 1885;
+//const int mqtt_port = 1883;
 
 // Auxiliar variables to store the current output state
 String redLED_State = "false";
@@ -151,6 +152,7 @@ void setup()
   // publish and subscribe
   client.publish(topic, "Connected from ESP32 - Nick Her");
   client.subscribe(topic);
+  client.subscribe(heartbeatTopic);
 
   Serial.println(F("Initialize System"));
   // init rfid D8,D5,D6,D7
@@ -306,44 +308,63 @@ bool checkTimeElapsed(String currentESPTime, String serverTime) {
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
-  String payloadStr = "";
-  Serial.print("Message arrived in topic: ");
-  Serial.println(topic);
-  Serial.print("Message: ");
-  for (int i = 0; i < length; i++)
+  if (strcmp(topic, "lock/44215962539792/actions") == 0)
   {
-    Serial.print((char)payload[i]);
-    payloadStr += (char)payload[i];
-  }
-  Serial.println();
-  Serial.println("-----------------------");
-
-  // Parse JSON string
-  StaticJsonDocument<200> doc;
-  DeserializationError error = deserializeJson(doc, payloadStr);
-
-  // Get message and date values
-  const char* message = doc["message"];
-  const char* date = doc["date"];
-
-  String currentTime = localTime();
-  Serial.println("");
-  if (checkTimeElapsed(currentTime, date) == true) {
-    if (strcmp(message, "unlock") == 0)
+    Serial.println("Topic 1 hit---");
+    String payloadStr = "";
+    Serial.print("Message arrived in topic: ");
+    Serial.println(topic);
+    Serial.print("Message: ");
+    for (int i = 0; i < length; i++)
     {
-      Serial.println("unlock door hit");
-      setLED(redLED, redLED_State, false);
-      setLED(greenLED, greenLED_State, true);
-      logIncident("Client", "Doorlock unlocked", "Client");
-    } else if (strcmp(message, "lock") == 0)
-    {
-      Serial.println("lock door hit");
-      setLED(greenLED, greenLED_State, false);
-      setLED(redLED, redLED_State, true);
-      logIncident("Client", "Doorlock locked", "Client");
-    } else {
-      return;
+      Serial.print((char)payload[i]);
+      payloadStr += (char)payload[i];
     }
+    Serial.println();
+    Serial.println("-----------------------");
+
+    // Parse JSON string
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, payloadStr);
+
+    // Get message and date values
+    const char* message = doc["message"];
+    const char* date = doc["date"];
+
+    String currentTime = localTime();
+    Serial.println("");
+    if (checkTimeElapsed(currentTime, date) == true) {
+      if (strcmp(message, "unlock") == 0)
+      {
+        Serial.println("unlock door hit");
+        setLED(redLED, redLED_State, false);
+        setLED(greenLED, greenLED_State, true);
+        logIncident("Client", "Doorlock unlocked", "Client");
+      } else if (strcmp(message, "lock") == 0)
+      {
+        Serial.println("lock door hit");
+        setLED(greenLED, greenLED_State, false);
+        setLED(redLED, redLED_State, true);
+        logIncident("Client", "Doorlock locked", "Client");
+      } else {
+        return;
+      }
+    }
+  }
+  else if (strcmp(topic, "heartbeats") == 0)
+  {
+    Serial.println("Topic 2 hit---");
+    Serial.print("Message arrived in topic: ");
+    Serial.println(topic);
+    Serial.print("Message: ");
+    for (int i = 0; i < length; i++)
+    {
+      Serial.print((char)payload[i]);
+    }
+    Serial.println();
+    Serial.println("-----------------------");
+    heartbeat();
+    logIncident("heartbeat", "heartbeat", "");
   }
 }
 
@@ -367,7 +388,7 @@ float ultrasonicSensor()
   // distanceInch = distanceCm * CM_TO_INCH;
 
   // Prints the distance in the Serial Monitor
-  Serial.print("- Distance (cm): ");
+  //Serial.print("- Distance (cm): ");
   //Serial.println(distanceCm);
 
   // Serial.print("Distance (inch): ");
@@ -493,14 +514,7 @@ void heartbeat()
 
 void loop()
 {
-  static unsigned long lastHeartbeatTime = 0;
   static unsigned long lastUltrasonicTime = 0;
-  if (millis() - lastHeartbeatTime >= 60000)
-  {
-    lastHeartbeatTime = millis();
-    heartbeat();
-    logIncident("heartbeat", "heartbeat", "");
-  }
 
   readRFID();
   int doorOpenDistance = ultrasonicSensor();

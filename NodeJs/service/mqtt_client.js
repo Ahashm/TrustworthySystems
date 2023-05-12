@@ -5,9 +5,10 @@ const eventModel = require('../models/events');
 
 
 let client = null;
-
-const host = 'broker.hivemq.com'
-const porti = '1883'
+//const host = 'broker.hivemq.com'
+//const porti = '1883'
+const host = '192.168.138.91'
+const porti = '1885'
 
 const lockTopicPath = "lock/+/"
 const events = "events";
@@ -28,24 +29,33 @@ exports.connect = (clientId) => {
     console.log('Connected')
     client.subscribe('lock/+/events');
     client.subscribe(lockTopicPath + heartbeat);
+
+    setInterval(function () {
+      client.publish(heartbeat, 'heartbeat', { qos: 1, retain: false }, (error) => {
+        if (error) {
+          console.error(error)
+        }
+      })
+    }, 60000);
+
   });
 
   client.on('message', (topic, payload) => {
     let type = topic.split("/").pop();
-    switch (type){
-      case heartbeat:{
+    switch (type) {
+      case heartbeat: {
         let heartbeat = JSON.parse(payload);
         heartbeatModel.createHeartbeat(heartbeat);
         heartbeatService.registerOnline(heartbeat.Id);
         console.log('Received Message:', topic, payload.toString())
         break;
       }
-      case events:{
+      case events: {
         let event = JSON.parse(payload);
         eventModel.createEvent(event);
         break;
       }
-      default : {
+      default: {
         console.log("what");
       }
     }
@@ -53,10 +63,10 @@ exports.connect = (clientId) => {
 }
 
 exports.publish = (lockId, message) => {
-  if(!heartbeatService.isOnline(lockId)){
+  if (!heartbeatService.isOnline(lockId)) {
     return "The lock is currently offline.";
   }
-  
+
   let topic = createTopicPath(lockId);
   client.publish(topic, message, { qos: 1, retain: false }, (error) => {
     if (error) {
