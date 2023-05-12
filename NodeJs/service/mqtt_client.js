@@ -27,7 +27,7 @@ exports.connect = (clientId) => {
 
   client.on('connect', () => {
     console.log('Connected')
-    client.subscribe('lock/+/events');
+    client.subscribe(lockTopicPath + events);
     client.subscribe(lockTopicPath + heartbeat);
 
     setInterval(function () {
