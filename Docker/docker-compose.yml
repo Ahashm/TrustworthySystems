@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - "1885:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./passwd:/mosquitto/config/passwd
+    restart: unless-stopped
+
+  mongodb_container:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data_container:/data/db
+
+volumes:
+  mongodb_data_container:
