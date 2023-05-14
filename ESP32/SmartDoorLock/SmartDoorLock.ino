@@ -28,8 +28,8 @@ MFRC522::MIFARE_Key key;
 MFRC522 rfid = MFRC522(SS_PIN, RST_PIN);
 
 // Network
-const char *ssid = "T14One";
-const char *password = "12349876";
+const char *ssid = "SSID";
+const char *password = "PASSWORD";
 
 // NTP client settings
 WiFiUDP ntpUDP;
@@ -44,8 +44,8 @@ const char *mqtt_broker = "192.168.239.91";
 //const char *mqtt_broker = "broker.hivemq.com";
 const char *topic = "lock/44215962539792/actions";
 const char *heartbeatTopic = "heartbeats";
-const char *mqtt_username = "ahash";
-const char *mqtt_password = "ahash";
+const char *mqtt_username = "root";
+const char *mqtt_password = "root";
 const int mqtt_port = 1885;
 //const int mqtt_port = 1883;
 
@@ -150,7 +150,7 @@ void setup()
     }
   }
   // publish and subscribe
-  client.publish(topic, "Connected from ESP32 - Nick Her");
+  client.publish(topic, "Connected from ESP32");
   client.subscribe(topic);
   client.subscribe(heartbeatTopic);
 
@@ -531,7 +531,7 @@ void loop()
   int doorOpenDistance = ultrasonicSensor();
   String distanceToDoor = String(doorOpenDistance);
 
-  if (doorOpenDistance >= 20)
+  if (doorOpenDistance >= 2)
   {
     if (millis() - lastUltrasonicTime >= 500)
     {
@@ -539,7 +539,7 @@ void loop()
       setLED(whiteLED, whiteLED_State, true);
       logIncident("DoorOpen", "Door is open", distanceToDoor);
     }
-  } else if (doorOpenDistance < 20) {
+  } else if (doorOpenDistance < 2) {
     if (millis() - lastUltrasonicTime >= 500)
     {
       lastUltrasonicTime = millis();
@@ -547,7 +547,5 @@ void loop()
       logIncident("DoorOpen", "Door is closed", distanceToDoor);
     }
   }
-
   client.loop();
-
 }
